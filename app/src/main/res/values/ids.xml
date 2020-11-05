@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="gravity" type="id" />
+    <item name="gx" type="id" />
+    <item name="acceleration" type="id" />
+    <item name="ax" type="id" />
+    <item name="gyroscope" type="id" />
+    <item name="sx" type="id" />
+    <item name="light" type="id" />
+    <item name="lx" type="id" />
+    <item name="pressure" type="id" />
+    <item name="px" type="id" />
+    <item name="location" type="id" />
+    <item name="loc" type="id" />
+</resources>
