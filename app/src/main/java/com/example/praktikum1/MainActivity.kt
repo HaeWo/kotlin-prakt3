@@ -18,6 +18,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -28,6 +30,13 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
     private lateinit var sensorManager : SensorManager
     private lateinit var locationManager : LocationManager
     private lateinit var locationListener: LocationListener
+
+    //
+    var jsonObject = JSONObject()
+    var jsonArray = JSONArray()
+    //var jsonObjectAsString = jsonObject.toString()
+    //var jsonArrayAsString = jsonArray.toString()
+
 
     //Sensor variables
     private var gravityData: SensorData? = null
@@ -44,10 +53,9 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
 
     //Buttons
     private lateinit var btnStart: Button
-    private lateinit var btnStop: Button
 
     //Time variables
-    private var dt:Long = 1000
+    private var dt:Long = 10006
     private var counter:Long = 0
 
     private var start = false
@@ -62,22 +70,18 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         //check for permission
         checkPermission()
 
-        //The start button
+        //The start/stop button
         btnStart.setOnClickListener{
-            getLocation()
-            start = true
-            registerListener()
-            btnStart.isEnabled = false
-            btnStop.isEnabled = true
-        }
-
-        //The stop button
-        btnStop.setOnClickListener{
-            start = false
-            unregisterListener()
-            saveFile()
-            btnStart.isEnabled = true
-            btnStop.isEnabled = false
+            if(!start){
+                getLocation()
+                start = true
+                registerListener()
+                btnStart.text = "Stop"
+            }else{
+                start = false
+                unregisterListener()
+                btnStart.text = "Start"
+            }
         }
     }
 
@@ -93,10 +97,6 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         loc = findViewById(R.id.loc)
 
         btnStart = findViewById<Button>(R.id.start)
-        btnStop = findViewById<Button>(R.id.stop)
-
-        //disabling the stop button at start
-        btnStop.isEnabled = false
     }
 
     private fun checkPermission(){
@@ -120,11 +120,11 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
     }
 
     private fun registerListener(){
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL)
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE), SensorManager.SENSOR_DELAY_NORMAL)
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY), SensorManager.SENSOR_DELAY_NORMAL)
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT), SensorManager.SENSOR_DELAY_NORMAL)
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE), SensorManager.SENSOR_DELAY_NORMAL)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_FASTEST)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE), SensorManager.SENSOR_DELAY_FASTEST)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY), SensorManager.SENSOR_DELAY_FASTEST)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT), SensorManager.SENSOR_DELAY_FASTEST)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE), SensorManager.SENSOR_DELAY_FASTEST)
     }
 
     private fun unregisterListener(){
