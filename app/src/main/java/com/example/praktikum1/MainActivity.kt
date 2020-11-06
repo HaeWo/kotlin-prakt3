@@ -1,25 +1,21 @@
 package com.example.praktikum1
 
 import android.Manifest
-import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
-import android.os.Environment
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -33,11 +29,9 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
     private lateinit var locationManager : LocationManager
     private lateinit var locationListener: LocationListener
 
-    //
+    //JSON
     var jsonObject = JSONObject()
     var jsonArray = JSONArray()
-    //var jsonObjectAsString = jsonObject.toString()
-    //var jsonArrayAsString = jsonArray.toString()
 
     //TextViews
     private lateinit var acc: TextView
@@ -130,10 +124,16 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
 
     @SuppressLint("MissingPermission")
     private fun getLocation(){
-        locationListener = LocationListener { location ->
-            loc.text = "Latitude: ${location.latitude}\nLongitude: ${location.longitude}"
+        val locationListener = LocationListener { location ->
+            loc.text = "Latitude: ${location.latitude}\n" +
+                    "Longitude: ${location.longitude}"
         }
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1L, 1f, locationListener)
+        locationManager.requestLocationUpdates(
+            LocationManager.GPS_PROVIDER,
+            1L,
+            1f,
+            locationListener
+        )
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
