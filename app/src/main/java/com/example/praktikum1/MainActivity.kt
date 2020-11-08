@@ -123,7 +123,7 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
 
     @SuppressLint("MissingPermission")
     private fun getLocation(){
-        val locationListener = LocationListener { location ->
+        locationListener = LocationListener { location ->
             loc.text = "Latitude: ${location.latitude}\n" +
                     "Longitude: ${location.longitude}"
         }
