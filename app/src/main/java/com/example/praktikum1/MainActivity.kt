@@ -110,11 +110,11 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
     }
 
     private fun registerListener(){
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL)
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE), SensorManager.SENSOR_DELAY_NORMAL)
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY), SensorManager.SENSOR_DELAY_NORMAL)
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT), SensorManager.SENSOR_DELAY_NORMAL)
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE), SensorManager.SENSOR_DELAY_NORMAL)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_FASTEST)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE), SensorManager.SENSOR_DELAY_FASTEST)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY), SensorManager.SENSOR_DELAY_FASTEST)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT), SensorManager.SENSOR_DELAY_FASTEST)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE), SensorManager.SENSOR_DELAY_FASTEST)
     }
 
     private fun unregisterListener(){
@@ -137,18 +137,20 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
 
     override fun onSensorChanged(event: SensorEvent?) {
 
-        var jsonObject = JSONObject()
+        var jsonObjectGrv = JSONObject()
+        var jsonObjectAcc = JSONObject()
+        var jsonObjectGyro = JSONObject()
 
         when (event?.sensor?.type) {
             Sensor.TYPE_GRAVITY -> {
                 grv.text = "X: ${"%.2f".format(event.values[0])} m/s² \n" +
                         " Y: ${"%.2f".format(event.values[1])} m/s² \n" +
                         " Z: ${"%.2f".format(event.values[2])} m/s² "
-                jsonObject.put("Sensor","Gravity")
-                jsonObject.put("X",event.values?.get(0))
-                jsonObject.put("Y",event.values?.get(1))
-                jsonObject.put("Z",event.values?.get(2))
-                jsonObject.put("Time",event.timestamp)
+                jsonObjectGrv.put("Sensor","Gravity")
+                jsonObjectGrv.put("X",event.values?.get(0))
+                jsonObjectGrv.put("Y",event.values?.get(1))
+                jsonObjectGrv.put("Z",event.values?.get(2))
+                jsonObjectGrv.put("Time",event.timestamp)
             }
         }
 
@@ -157,11 +159,11 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
                 acc.text = "X: ${"%.2f".format(event.values[0])} m/s² \n" +
                         " Y: ${"%.2f".format(event.values[1])} m/s² \n" +
                         " Z: ${"%.2f".format(event.values[2])} m/s² "
-                jsonObject.put("Sensor","Accelerometer")
-                jsonObject.put("X",event.values?.get(0))
-                jsonObject.put("Y",event.values?.get(1))
-                jsonObject.put("Z",event.values?.get(2))
-                jsonObject.put("Time",event.timestamp)
+                jsonObjectAcc.put("Sensor","Accelerometer")
+                jsonObjectAcc.put("X",event.values?.get(0))
+                jsonObjectAcc.put("Y",event.values?.get(1))
+                jsonObjectAcc.put("Z",event.values?.get(2))
+                jsonObjectAcc.put("Time",event.timestamp)
             }
         }
 
@@ -170,11 +172,11 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
                 gyr.text = "X: ${"%.2f".format(event.values[0])} m/s² \n" +
                         " Y: ${"%.2f".format(event.values[1])} m/s² \n" +
                         " Z: ${"%.2f".format(event.values[2])} m/s² "
-                jsonObject.put("Sensor","Gyroscope")
-                jsonObject.put("X",event.values?.get(0))
-                jsonObject.put("Y",event.values?.get(1))
-                jsonObject.put("Z",event.values?.get(2))
-                jsonObject.put("Time",event.timestamp)
+                jsonObjectGyro.put("Sensor","Gyroscope")
+                jsonObjectGyro.put("X",event.values?.get(0))
+                jsonObjectGyro.put("Y",event.values?.get(1))
+                jsonObjectGyro.put("Z",event.values?.get(2))
+                jsonObjectGyro.put("Time",event.timestamp)
             }
         }
 
@@ -187,7 +189,18 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         }
 
         if(System.currentTimeMillis() - counter >= dt) {
-            jsonArray.put(jsonObject)
+            if(!jsonObjectGrv.isNull("X")&&!jsonObjectGrv.isNull("Y")&&!jsonObjectGrv.isNull("Z")){
+                jsonArray.put(jsonObjectGrv)
+            }
+
+            if(!jsonObjectAcc.isNull("X")&&!jsonObjectAcc.isNull("Y")&&!jsonObjectAcc.isNull("Z")){
+                jsonArray.put(jsonObjectAcc)
+            }
+
+            if(!jsonObjectGyro.isNull("X")&&!jsonObjectGyro.isNull("Y")&&!jsonObjectGyro.isNull("Z")){
+                jsonArray.put(jsonObjectGyro)
+            }
+
             counter = System.currentTimeMillis()
         }
 
