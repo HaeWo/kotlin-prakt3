@@ -1,4 +1,4 @@
-package com.example.praktikum1
+package com.example.hae_wo
 
 import org.junit.Test
 

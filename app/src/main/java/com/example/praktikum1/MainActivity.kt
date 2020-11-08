@@ -1,4 +1,4 @@
-package com.example.praktikum1
+package com.example.hae_wo
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -30,7 +30,6 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
     private lateinit var locationListener: LocationListener
 
     //JSON
-    var jsonObject = JSONObject()
     var jsonArray = JSONArray()
 
     //TextViews
@@ -138,64 +137,58 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
 
     override fun onSensorChanged(event: SensorEvent?) {
 
+        var jsonObject = JSONObject()
+
+        when (event?.sensor?.type) {
+            Sensor.TYPE_GRAVITY -> {
+                grv.text = "X: ${"%.2f".format(event.values[0])} m/s² \n" +
+                        " Y: ${"%.2f".format(event.values[1])} m/s² \n" +
+                        " Z: ${"%.2f".format(event.values[2])} m/s² "
+                jsonObject.put("Sensor","Gravity")
+                jsonObject.put("X",event.values?.get(0))
+                jsonObject.put("Y",event.values?.get(1))
+                jsonObject.put("Z",event.values?.get(2))
+                jsonObject.put("Time",event.timestamp)
+            }
+        }
+
+        when (event?.sensor?.type) {
+            Sensor.TYPE_ACCELEROMETER -> {
+                acc.text = "X: ${"%.2f".format(event.values[0])} m/s² \n" +
+                        " Y: ${"%.2f".format(event.values[1])} m/s² \n" +
+                        " Z: ${"%.2f".format(event.values[2])} m/s² "
+                jsonObject.put("Sensor","Accelerometer")
+                jsonObject.put("X",event.values?.get(0))
+                jsonObject.put("Y",event.values?.get(1))
+                jsonObject.put("Z",event.values?.get(2))
+                jsonObject.put("Time",event.timestamp)
+            }
+        }
+
+        when (event?.sensor?.type) {
+            Sensor.TYPE_GYROSCOPE -> {
+                gyr.text = "X: ${"%.2f".format(event.values[0])} m/s² \n" +
+                        " Y: ${"%.2f".format(event.values[1])} m/s² \n" +
+                        " Z: ${"%.2f".format(event.values[2])} m/s² "
+                jsonObject.put("Sensor","Gyroscope")
+                jsonObject.put("X",event.values?.get(0))
+                jsonObject.put("Y",event.values?.get(1))
+                jsonObject.put("Z",event.values?.get(2))
+                jsonObject.put("Time",event.timestamp)
+            }
+        }
+
+        when (event?.sensor?.type) {
+            Sensor.TYPE_PRESSURE -> pre.text = "${"%.2f".format(event.values[0])} hPa"
+        }
+
+        when (event?.sensor?.type) {
+            Sensor.TYPE_LIGHT -> lit.text = "${"%.2f".format(event.values[0])} lx"
+        }
+
         if(System.currentTimeMillis() - counter >= dt) {
-            when (event?.sensor?.type) {
-                Sensor.TYPE_ACCELEROMETER -> {
-                jsonObject.put("X",event.values[0])
-                jsonObject.put("Y",event.values[1])
-                jsonObject.put("Z",event.values[2])
-                }
-            }
             jsonArray.put(jsonObject)
-
-            when (event?.sensor?.type) {
-                Sensor.TYPE_GYROSCOPE ->{
-                    jsonObject.put("X",event.values[0])
-                    jsonObject.put("Y",event.values[1])
-                    jsonObject.put("Z",event.values[2])
-                }
-            }
-            jsonArray.put(jsonObject)
-
-            when (event?.sensor?.type) {
-                Sensor.TYPE_GRAVITY -> {
-                    jsonObject.put("X",event.values[0])
-                    jsonObject.put("Y",event.values[1])
-                    jsonObject.put("Z",event.values[2])
-                }
-            }
-            jsonArray.put(jsonObject)
-
             counter = System.currentTimeMillis()
-        }else{
-            when (event?.sensor?.type) {
-                Sensor.TYPE_ACCELEROMETER -> acc.text =
-                    "X: ${"%.2f".format(event.values[0])} m/s² \n" +
-                            " Y: ${"%.2f".format(event.values[1])} m/s² \n" +
-                            " Z: ${"%.2f".format(event.values[2])} m/s² "
-            }
-
-            when (event?.sensor?.type) {
-                Sensor.TYPE_GYROSCOPE -> gyr.text =
-                    "X: ${"%.2f".format(event.values[0])} m/s² \n" +
-                            " Y: ${"%.2f".format(event.values[1])} m/s² \n" +
-                            " Z: ${"%.2f".format(event.values[2])} m/s² "
-            }
-
-            when (event?.sensor?.type) {
-                Sensor.TYPE_GRAVITY -> grv.text =
-                    "X: ${"%.2f".format(event.values[0])} m/s² \n" +
-                            " Y: ${"%.2f".format(event.values[1])} m/s² \n" +
-                            " Z: ${"%.2f".format(event.values[2])} m/s² "
-            }
-
-            when (event?.sensor?.type) {
-                Sensor.TYPE_PRESSURE -> pre.text = "${"%.2f".format(event.values[0])} hPa"
-            }
-
-            when (event?.sensor?.type) {
-                Sensor.TYPE_LIGHT -> lit.text = "${"%.2f".format(event.values[0])} lx"
-            }
         }
 
     }
