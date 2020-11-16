@@ -11,6 +11,7 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -42,6 +43,11 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
 
     //Buttons
     private lateinit var btnStart: Button
+    
+    //Checkboxes
+    private lateinit var grv_cb: CheckBox
+    private lateinit var gyr_cb: CheckBox
+    private lateinit var acc_cb: CheckBox
 
     //Time variables
     private var dt:Long = 1000
@@ -63,7 +69,7 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         btnStart.setOnClickListener{
             if(!start){
                 start = true
-                getLocation()
+                //getLocation()
                 registerListener()
                 btnStart.text = "Stop"
             }else{
@@ -85,6 +91,9 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         lit = findViewById(R.id.lx)
         pre = findViewById(R.id.px)
         loc = findViewById(R.id.loc)
+        grv_cb = findViewById(R.id.grv_checkBox)
+        gyr_cb = findViewById(R.id.gyr_checkBox)
+        acc_cb = findViewById(R.id.acc_checkBox)
 
         btnStart = findViewById<Button>(R.id.start)
     }
@@ -94,8 +103,8 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         if (
                 ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
                 ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE) !=  PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(this,android.Manifest.permission.WRITE_EXTERNAL_STORAGE) !=  PackageManager.PERMISSION_GRANTED
+                ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) !=  PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) !=  PackageManager.PERMISSION_GRANTED
 
         ) {
             ActivityCompat.requestPermissions(
