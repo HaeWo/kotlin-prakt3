@@ -48,6 +48,9 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
     private lateinit var grv_cb: CheckBox
     private lateinit var gyr_cb: CheckBox
     private lateinit var acc_cb: CheckBox
+    private lateinit var lit_cb: CheckBox
+    private lateinit var pre_cb: CheckBox
+    private lateinit var loc_cb: CheckBox
 
     //Time variables
     private var dt:Long = 1000
@@ -94,6 +97,9 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         grv_cb = findViewById(R.id.grv_checkBox)
         gyr_cb = findViewById(R.id.gyr_checkBox)
         acc_cb = findViewById(R.id.acc_checkBox)
+        lit_cb = findViewById(R.id.light_checkBox)
+        pre_cb = findViewById(R.id.pressure_checkBox)
+        loc_cb = findViewById(R.id.location_checkBox)
 
         btnStart = findViewById<Button>(R.id.start)
     }
@@ -149,6 +155,9 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         var jsonObjectGrv = JSONObject()
         var jsonObjectAcc = JSONObject()
         var jsonObjectGyro = JSONObject()
+        var jsonObjectLit = JSONObject()
+        var jsonObjectPre = JSONObject()
+        var jsonObjectLoc = JSONObject()
 
         if(grv_cb.isChecked) {
             when (event?.sensor?.type) {
@@ -160,7 +169,7 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
                     jsonObjectGrv.put("X", event.values?.get(0))
                     jsonObjectGrv.put("Y", event.values?.get(1))
                     jsonObjectGrv.put("Z", event.values?.get(2))
-                    jsonObjectGrv.put("Time", event.timestamp)
+                    jsonObjectGrv.put("Time", System.currentTimeMillis())
                 }
             }
         }
@@ -175,7 +184,7 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
                     jsonObjectAcc.put("X", event.values?.get(0))
                     jsonObjectAcc.put("Y", event.values?.get(1))
                     jsonObjectAcc.put("Z", event.values?.get(2))
-                    jsonObjectAcc.put("Time", event.timestamp)
+                    jsonObjectAcc.put("Time", System.currentTimeMillis())
                 }
             }
         }
@@ -190,17 +199,31 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
                     jsonObjectGyro.put("X", event.values?.get(0))
                     jsonObjectGyro.put("Y", event.values?.get(1))
                     jsonObjectGyro.put("Z", event.values?.get(2))
-                    jsonObjectGyro.put("Time", event.timestamp)
+                    jsonObjectGyro.put("Time", System.currentTimeMillis())
                 }
             }
         }
 
-        when (event?.sensor?.type) {
-            Sensor.TYPE_PRESSURE -> pre.text = "${"%.2f".format(event.values[0])} hPa"
+        if(pre_cb.isChecked) {
+            when (event?.sensor?.type) {
+                Sensor.TYPE_PRESSURE -> {
+                    pre.text = "${"%.2f".format(event.values[0])} hPa"
+                    jsonObjectPre.put("Sensor", "Pressure")
+                    jsonObjectPre.put("Value", event.values[0])
+                    jsonObjectPre.put("Time", System.currentTimeMillis())
+                }
+            }
         }
 
-        when (event?.sensor?.type) {
-            Sensor.TYPE_LIGHT -> lit.text = "${"%.2f".format(event.values[0])} lx"
+        if(lit_cb.isChecked) {
+            when (event?.sensor?.type) {
+                Sensor.TYPE_LIGHT -> {
+                    lit.text = "${"%.2f".format(event.values[0])} lx"
+                    jsonObjectLit.put("Sensor", "Light")
+                    jsonObjectLit.put("Value", event.values[0])
+                    jsonObjectLit.put("Time", System.currentTimeMillis())
+                }
+            }
         }
 
         if(System.currentTimeMillis() - counter >= dt) {
@@ -214,6 +237,14 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
 
             if(!jsonObjectGyro.isNull("X")&&!jsonObjectGyro.isNull("Y")&&!jsonObjectGyro.isNull("Z")){
                 jsonArray.put(jsonObjectGyro)
+            }
+
+            if(!jsonObjectPre.isNull("Value")){
+                jsonArray.put(jsonObjectPre)
+            }
+
+            if(!jsonObjectLit.isNull("Value")){
+                jsonArray.put(jsonObjectLit)
             }
 
             counter = System.currentTimeMillis()
