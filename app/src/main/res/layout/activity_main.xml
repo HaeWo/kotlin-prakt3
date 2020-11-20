@@ -187,6 +187,28 @@
             app:layout_constraintHorizontal_bias="0.5"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/getLocation" />
+
+        <Button
+            android:id="@+id/sendHttp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Send to Http"
+            android:layout_marginTop="20dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.5"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/showMap" />
+
+        <TextView
+            android:id="@+id/text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="https://haewo.free.beeceptor.com"
+            android:textAlignment="center"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/sendHttp" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </ScrollView>
