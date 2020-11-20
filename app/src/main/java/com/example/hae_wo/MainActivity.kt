@@ -2,11 +2,13 @@ package com.example.hae_wo
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.location.Geocoder
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
@@ -25,10 +27,9 @@ import java.io.IOException
 
 class MainActivity : AppCompatActivity(),SensorEventListener {
 
-    //Location variables
+    //Managers
     private lateinit var sensorManager : SensorManager
     private lateinit var locationManager : LocationManager
-    private lateinit var locationListener: LocationListener
 
     //JSON
     var jsonArray = JSONArray()
@@ -43,6 +44,8 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
 
     //Buttons
     private lateinit var btnStart: Button
+    private lateinit var btnLoc: Button
+    private lateinit var btnMap: Button
     
     //Checkboxes
     private lateinit var grv_cb: CheckBox
@@ -55,6 +58,10 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
     //Time variables
     private var dt:Long = 1000
     private var counter:Long = 0
+
+    //Lat und Lng Values
+    private var lat: Double = 0.0
+    private var lng: Double = 0.0
 
     private var start = false
 
@@ -72,7 +79,6 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         btnStart.setOnClickListener{
             if(!start){
                 start = true
-                //getLocation()
                 registerListener()
                 btnStart.text = "Stop"
             }else{
@@ -81,6 +87,16 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
                 saveFile()
                 btnStart.text = "Start"
             }
+        }
+
+        btnLoc.setOnClickListener{
+            if(loc_cb.isChecked){
+                getLocation()
+            }
+        }
+
+        btnMap.setOnClickListener{
+            showMap()
         }
     }
 
@@ -101,7 +117,9 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         pre_cb = findViewById(R.id.pressure_checkBox)
         loc_cb = findViewById(R.id.location_checkBox)
 
-        btnStart = findViewById<Button>(R.id.start)
+        btnStart = findViewById(R.id.start)
+        btnLoc = findViewById(R.id.getLocation)
+        btnMap = findViewById(R.id.showMap)
     }
 
     private fun checkPermission(){
@@ -138,16 +156,34 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
 
     @SuppressLint("MissingPermission")
     private fun getLocation(){
-        locationListener = LocationListener { location ->
-            loc.text = "Latitude: ${location.latitude}\n" +
-                    "Longitude: ${location.longitude}"
+        //using the LocationListener to get location
+        var geocoder = Geocoder(this)
+        val locationListener = LocationListener { location ->
+        val geocodeResults = geocoder.getFromLocation(location.latitude, location.longitude, 1)
+            if (geocodeResults.isNotEmpty()) {
+                loc.text = "Latitude: ${location.latitude}\n" +
+                        "Longitude: ${location.longitude}\n" +
+                        "Adresse: ${geocodeResults[0].getAddressLine(0)}\n"
+            } else {
+                loc.text = "Latitude: ${location.latitude}\nLongitude: ${location.longitude}"
+
+            }
+            lat = location.latitude
+            lng = location.longitude
         }
         locationManager.requestLocationUpdates(
-            LocationManager.GPS_PROVIDER,
+            LocationManager.NETWORK_PROVIDER,
             1L,
             1f,
             locationListener
         )
+    }
+
+    private fun showMap(){
+        val intent = Intent(this, MapsActivity::class.java)
+        intent.putExtra("LAT", lat)
+        intent.putExtra("LNG", lng)
+        startActivity(intent)
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
