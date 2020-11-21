@@ -13,13 +13,11 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
 import android.util.Log
-import android.widget.Button
-import android.widget.CheckBox
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.*
 import okhttp3.*
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
@@ -35,7 +33,12 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
     private lateinit var locationManager : LocationManager
 
     //JSON
-    var jsonArray = JSONArray()
+    private var jsonArray = JSONArray()
+    private var jsonObjectGrv = JSONObject()
+    private var jsonObjectAcc = JSONObject()
+    private var jsonObjectGyro = JSONObject()
+    private var jsonObjectLit = JSONObject()
+    private var jsonObjectPre = JSONObject()
 
     //TextViews
     private lateinit var acc: TextView
@@ -45,11 +48,15 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
     private lateinit var pre: TextView
     private lateinit var loc: TextView
 
+    //EditText
+    private lateinit var inputTime: EditText
+
     //Buttons
     private lateinit var btnStart: Button
-    private lateinit var btnLoc: Button
     private lateinit var btnMap: Button
     private lateinit var btnHTTP: Button
+
+    private var start = false
     
     //Checkboxes
     private lateinit var grv_cb: CheckBox
@@ -59,44 +66,36 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
     private lateinit var pre_cb: CheckBox
     private lateinit var loc_cb: CheckBox
 
-    //Time variables
-    private var dt:Long = 1000
-    private var counter:Long = 0
+    //Coroutines
+   private var scope = MainScope()
 
     //Lat und Lng Values
     private var lat: Double = 0.0
     private var lng: Double = 0.0
-
-    private var start = false
 
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        //initialize the variable
+        //initialize the variable and check for permission
         init()
-
-        //check for permission
         checkPermission()
+        inputTime.setText("1000")
 
         //The start/stop button
         btnStart.setOnClickListener{
             if(!start){
                 start = true
                 registerListener()
-                btnStart.text = "Stop"
+                startUpdates(inputTime.text.toString().toLong())
+                btnStart.text = "Stop and Save"
             }else{
                 start = false
                 unregisterListener()
                 saveFile()
+                stopUpdates()
                 btnStart.text = "Start"
-            }
-        }
-
-        btnLoc.setOnClickListener{
-            if(loc_cb.isChecked){
-                getLocation()
             }
         }
 
@@ -126,8 +125,9 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         pre_cb = findViewById(R.id.pressure_checkBox)
         loc_cb = findViewById(R.id.location_checkBox)
 
+        inputTime = findViewById(R.id.time)
+
         btnStart = findViewById(R.id.start)
-        btnLoc = findViewById(R.id.getLocation)
         btnMap = findViewById(R.id.showMap)
         btnHTTP = findViewById(R.id.sendHttp)
     }
@@ -166,35 +166,40 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
 
     @SuppressLint("MissingPermission", "SetTextI18n")
     private fun getLocation(){
-        var jsonObjectLoc = JSONObject()
+        if(loc_cb.isChecked) {
+            var geocoder = Geocoder(this)
+            val locationListener = LocationListener { location ->
+                val geocodeResults =
+                    geocoder.getFromLocation(location.latitude, location.longitude, 1)
 
-        //using the LocationListener to get location
-        var geocoder = Geocoder(this)
-        val locationListener = LocationListener { location ->
-        val geocodeResults = geocoder.getFromLocation(location.latitude, location.longitude, 1)
-            if (geocodeResults.isNotEmpty()) {
-                loc.text = "Latitude: ${location.latitude}\n" +
-                        "Longitude: ${location.longitude}\n" +
-                        "Adresse: ${geocodeResults[0].getAddressLine(0)}\n"
-            } else {
-                loc.text = "Latitude: ${location.latitude}\nLongitude: ${location.longitude}"
+                if (geocodeResults.isNotEmpty()) {
+                    loc.text = "Latitude: ${location.latitude}\n" +
+                            "Longitude: ${location.longitude}\n" +
+                            "Adresse: ${geocodeResults[0].getAddressLine(0)}\n"
+                } else {
+                    loc.text = "Latitude: ${location.latitude}\nLongitude: ${location.longitude}"
 
+                }
+
+                lat= location.latitude
+                lng = location.longitude
             }
-            lat = location.latitude
-            lng = location.longitude
-        }
-        locationManager.requestLocationUpdates(
-            LocationManager.NETWORK_PROVIDER,
-            1L,
-            1f,
-            locationListener
-        )
+            locationManager.requestLocationUpdates(
+                LocationManager.NETWORK_PROVIDER,
+                1L,
+                1f,
+                locationListener
+            )
 
-        jsonObjectLoc.put("Latitude", lat)
-        jsonObjectLoc.put("Longitude", lng)
-        if(jsonObjectLoc["Latitude"] != 0.0 && jsonObjectLoc["Longitude"] != 0.0){
-            jsonToArray(jsonObjectLoc)
-            Log.e("Location", jsonObjectLoc.toString())
+            // Saving the location data into JSON file
+            var jsonObjectLoc = JSONObject()
+            jsonObjectLoc.put("Latitude", lat)
+            jsonObjectLoc.put("Longitude", lng)
+            jsonObjectLoc.put("Time", System.currentTimeMillis())
+            if (jsonObjectLoc["Latitude"] != 0.0 && jsonObjectLoc["Longitude"] != 0.0) {
+                jsonToArray(jsonObjectLoc)
+            }
+            Log.e("Debug:", "Location got updated!")
         }
     }
 
@@ -208,11 +213,11 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
     @SuppressLint("SetTextI18n")
     override fun onSensorChanged(event: SensorEvent?) {
 
-        val jsonObjectGrv = JSONObject()
-        val jsonObjectAcc = JSONObject()
-        val jsonObjectGyro = JSONObject()
-        val jsonObjectLit = JSONObject()
-        val jsonObjectPre = JSONObject()
+        jsonObjectGrv = JSONObject()
+        jsonObjectAcc = JSONObject()
+        jsonObjectGyro = JSONObject()
+        jsonObjectLit = JSONObject()
+        jsonObjectPre = JSONObject()
 
         if(grv_cb.isChecked) {
             when (event?.sensor?.type) {
@@ -280,34 +285,49 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
                 }
             }
         }
-
-        if(System.currentTimeMillis() - counter >= dt) {
-            if(!jsonObjectGrv.isNull("X")&&!jsonObjectGrv.isNull("Y")&&!jsonObjectGrv.isNull("Z")){
-                jsonToArray(jsonObjectGrv)
-            }
-
-            if(!jsonObjectAcc.isNull("X")&&!jsonObjectAcc.isNull("Y")&&!jsonObjectAcc.isNull("Z")){
-                jsonToArray(jsonObjectAcc)
-            }
-
-            if(!jsonObjectGyro.isNull("X")&&!jsonObjectGyro.isNull("Y")&&!jsonObjectGyro.isNull("Z")){
-                jsonToArray(jsonObjectGyro)
-            }
-
-            if(!jsonObjectPre.isNull("Value")){
-                jsonToArray(jsonObjectPre)
-            }
-
-            if(!jsonObjectLit.isNull("Value")){
-                jsonToArray(jsonObjectLit)
-            }
-
-            counter = System.currentTimeMillis()
-        }
-
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+
+    private fun updateSensorsData() {
+        if(!jsonObjectGrv.isNull("X")&&!jsonObjectGrv.isNull("Y")&&!jsonObjectGrv.isNull("Z")){
+            jsonToArray(jsonObjectGrv)
+        }
+
+        if(!jsonObjectAcc.isNull("X")&&!jsonObjectAcc.isNull("Y")&&!jsonObjectAcc.isNull("Z")){
+            jsonToArray(jsonObjectAcc)
+        }
+
+        if(!jsonObjectGyro.isNull("X")&&!jsonObjectGyro.isNull("Y")&&!jsonObjectGyro.isNull("Z")){
+            jsonToArray(jsonObjectGyro)
+        }
+
+        if(!jsonObjectPre.isNull("Value")){
+            jsonToArray(jsonObjectPre)
+        }
+
+        if(!jsonObjectLit.isNull("Value")){
+            jsonToArray(jsonObjectLit)
+        }
+
+        Log.e("Debug:","Sensors data got updated!")
+    }
+
+    private fun startUpdates(time : Long){
+        scope.launch {
+            while(true){
+                getLocation()
+                updateSensorsData()
+                delay(time)
+                Log.e("Time:",System.currentTimeMillis().toString())
+            }
+        }
+    }
+
+    private fun stopUpdates(){
+        scope.cancel()
+        scope = MainScope()
+    }
 
     private fun jsonToArray(jsonObject: JSONObject){
         jsonArray.put(jsonObject)
@@ -339,9 +359,14 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
             override fun onResponse(call: Call, response: Response) {
                 if (!response.isSuccessful) throw IOException("Fehler: $response")
                 Log.e("Res",response.body!!.string())
-                // Implementierung, was geschehen soll, wenn POST-Anfrage erfolgreich war
             }
         })
+    }
+
+    private suspend fun setTextOnMainThread(input: String){
+        withContext(Dispatchers.Main){
+            loc.text = input
+        }
     }
 
 }

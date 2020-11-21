@@ -155,6 +155,16 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/location_checkBox" />
 
+        <EditText
+            android:id="@+id/time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:inputType="number"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/loc" />
+
         <Button
             android:id="@+id/start"
             android:layout_width="wrap_content"
@@ -164,18 +174,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.5"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/loc" />
-
-        <Button
-            android:id="@+id/getLocation"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Update Location"
-            android:layout_marginTop="20dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.5"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/start" />
+            app:layout_constraintTop_toBottomOf="@+id/time" />
 
         <Button
             android:id="@+id/showMap"
@@ -186,7 +185,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.5"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/getLocation" />
+            app:layout_constraintTop_toBottomOf="@+id/start" />
 
         <Button
             android:id="@+id/sendHttp"
