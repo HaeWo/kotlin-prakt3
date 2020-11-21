@@ -72,6 +72,7 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
     //Lat und Lng Values
     private var lat: Double = 0.0
     private var lng: Double = 0.0
+    private var latlngArray: ArrayList<Double> = arrayListOf()
 
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -199,14 +200,24 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
             if (jsonObjectLoc["Latitude"] != 0.0 && jsonObjectLoc["Longitude"] != 0.0) {
                 jsonToArray(jsonObjectLoc)
             }
+            if(lat != 0.0)
+                latlngArray.add(lat)
+            if(lng != 0.0)
+                latlngArray.add(lng)
             Log.e("Debug:", "Location got updated!")
         }
     }
 
     private fun showMap(){
         val intent = Intent(this, MapsActivity::class.java)
-        intent.putExtra("LAT", lat)
-        intent.putExtra("LNG", lng)
+        intent.putExtra("LENGTH", latlngArray.size)
+        for((x, i) in latlngArray.withIndex()){
+            intent.putExtra("L${x}", i)
+        }
+        //intent.putExtra("LAT", lat)
+        //intent.putExtra("LNG", lng)
+        //intent.putExtra("LOCATIONS", latlngArray.toArray())
+        Log.e("Debug:", latlngArray.toString())
         startActivity(intent)
     }
 
