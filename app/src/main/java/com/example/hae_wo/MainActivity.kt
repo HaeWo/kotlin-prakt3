@@ -1,5 +1,6 @@
 package com.example.hae_wo
 
+
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
@@ -214,9 +215,6 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         for((x, i) in latlngArray.withIndex()){
             intent.putExtra("L${x}", i)
         }
-        //intent.putExtra("LAT", lat)
-        //intent.putExtra("LNG", lng)
-        //intent.putExtra("LOCATIONS", latlngArray.toArray())
         Log.e("Debug:", latlngArray.toString())
         startActivity(intent)
     }
