@@ -14,10 +14,16 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
+import com.jjoe64.graphview.GraphView
 import kotlinx.coroutines.*
 import okhttp3.*
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -68,7 +74,10 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
     private lateinit var loc_cb: CheckBox
 
     //Coroutines
-   private var scope = MainScope()
+    private var scope = MainScope()
+
+    //GraphView
+    private lateinit var graph : GraphView
 
     //Lat und Lng Values
     private var lat: Double = 0.0
@@ -89,11 +98,15 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         btnStart.setOnClickListener{
             if(!start){
                 start = true
+                btnHTTP.isEnabled = false
+                btnMap.isEnabled = false
                 registerListener()
                 startUpdates(inputTime.text.toString().toLong())
                 btnStart.text = "Stop and Save"
             }else{
                 start = false
+                btnHTTP.isEnabled = true
+                btnMap.isEnabled = true
                 unregisterListener()
                 saveFile()
                 stopUpdates()
@@ -128,6 +141,8 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         loc_cb = findViewById(R.id.location_checkBox)
 
         inputTime = findViewById(R.id.time)
+
+        graph = findViewById<View>(R.id.graph) as GraphView
 
         btnStart = findViewById(R.id.start)
         btnMap = findViewById(R.id.showMap)
@@ -167,7 +182,7 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
     }
 
     @SuppressLint("MissingPermission", "SetTextI18n")
-    private fun getLocation(){
+    private fun getLocationListener(){
         if(loc_cb.isChecked) {
             var geocoder = Geocoder(this)
             val locationListener = LocationListener { location ->
@@ -206,6 +221,54 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
             if(lng != 0.0)
                 latlngArray.add(lng)
             Log.e("Debug:", "Location got updated!")
+        }
+    }
+
+    @SuppressLint("MissingPermission", "SetTextI18n")
+    private fun getLocationCallback() {
+        if (loc_cb.isChecked) {
+            val geocoder = Geocoder(this)
+            val locationRequest: LocationRequest =
+                LocationRequest().setFastestInterval(20000).setInterval(60000)
+                    .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
+
+            val locationCallback = object : LocationCallback() {
+                override fun onLocationResult(location_result: LocationResult?) {
+                    val geocodeResults = geocoder.getFromLocation(
+                        location_result?.lastLocation!!.latitude,
+                        location_result?.lastLocation!!.longitude,
+                        1
+                    )
+                    super.onLocationResult(location_result)
+                    loc.text = "Latitude: ${location_result.lastLocation.latitude}\n" +
+                            "Longitude: ${location_result.lastLocation?.longitude}\n" +
+                            "Altitude: ${location_result.lastLocation?.altitude}\n" +
+                            "Speed: ${location_result.lastLocation?.speed}\n" +
+                            "Accuracy: ${location_result.lastLocation?.accuracy}\n" +
+                            "Provider: ${location_result.lastLocation?.provider}\n" +
+                            "Address: ${geocodeResults[0].getAddressLine(0)}\n"
+
+                    lat = location_result.lastLocation.latitude
+                    lng = location_result.lastLocation.longitude
+                }
+            }
+            LocationServices.getFusedLocationProviderClient(this).requestLocationUpdates(
+                locationRequest,
+                locationCallback,
+                null
+            )
+
+            // Saving the location data into JSON file
+            if (lat != 0.0 && lng != 0.0) {
+                var jsonObjectLoc = JSONObject()
+                jsonObjectLoc.put("Latitude", lat)
+                jsonObjectLoc.put("Longitude", lng)
+                jsonObjectLoc.put("Time", System.currentTimeMillis())
+                //jsonToArray(jsonObjectLoc)
+                latlngArray.add(lat)
+                latlngArray.add(lng)
+                Log.e("Debug:", "Location got updated!")
+            }
         }
     }
 
@@ -325,7 +388,8 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
     private fun startUpdates(time : Long){
         scope.launch {
             while(true){
-                getLocation()
+                //getLocationListener()
+                getLocationCallback()
                 updateSensorsData()
                 delay(time)
                 Log.e("Time:",System.currentTimeMillis().toString())
