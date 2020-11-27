@@ -165,6 +165,35 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/loc" />
 
+        <RadioGroup
+            android:id="@+id/rg"
+            android:checkedButton="@id/rb_high"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.5"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/time" >
+
+            <RadioButton
+                android:id="@+id/rb_high"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="High Accuracy" />
+
+            <RadioButton
+                android:id="@+id/rb_balanced"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Balanced Power Accuracy" />
+
+            <RadioButton
+                android:id="@+id/rb_low"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Low Power" />
+        </RadioGroup>
+
         <Button
             android:id="@+id/start"
             android:layout_width="wrap_content"
@@ -174,18 +203,29 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.5"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/time" />
+            app:layout_constraintTop_toBottomOf="@+id/rg" />
 
         <Button
-            android:id="@+id/showMap"
+            android:id="@+id/sendToMap"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Show The Map"
+            android:text="Send To Map"
             android:layout_marginTop="20dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.5"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/start" />
+
+        <Button
+            android:id="@+id/showMap"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Show Map"
+            android:layout_marginTop="20dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.5"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/sendToMap" />
 
         <Button
             android:id="@+id/sendHttp"
