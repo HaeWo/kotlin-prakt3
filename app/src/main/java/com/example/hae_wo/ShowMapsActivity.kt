@@ -100,12 +100,15 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
         }
         setHighBTN.setOnClickListener{
             accuracy = 1
+            changeBTN.setImageResource(R.drawable.high)
         }
         setBalancedBTN.setOnClickListener{
             accuracy = 2
+            changeBTN.setImageResource(R.drawable.balanced)
         }
         setLowBTN.setOnClickListener {
             accuracy = 3
+            changeBTN.setImageResource(R.drawable.low)
         }
     }
 
