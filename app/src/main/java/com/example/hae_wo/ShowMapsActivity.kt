@@ -10,6 +10,7 @@ import android.util.Log
 import android.view.View
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
+import android.widget.Toast
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -19,6 +20,11 @@ import com.google.android.gms.maps.model.CircleOptions
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import java.util.ArrayList
 
 class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
@@ -29,6 +35,7 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var setHighBTN: FloatingActionButton
     private lateinit var setBalancedBTN: FloatingActionButton
     private lateinit var setLowBTN: FloatingActionButton
+    private lateinit var saveBTN: FloatingActionButton
     private val rotateOpen: Animation by lazy {
         AnimationUtils.loadAnimation(
             this,
@@ -73,7 +80,8 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
         setHighBTN = findViewById(R.id.fabHigh)
         setBalancedBTN = findViewById(R.id.fabBalanced)
         setLowBTN = findViewById(R.id.fabLow)
-        changeBTN = findViewById(R.id.fabRefresh)
+        changeBTN = findViewById(R.id.fabChange)
+        saveBTN = findViewById(R.id.fabSave)
 
         //Buttons on Click Listeners
         addLocBTN.setOnClickListener{
@@ -179,6 +187,11 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
             accuracy = "LOW"
             changeBTN.setImageResource(R.drawable.low)
         }
+
+        saveBTN.setOnClickListener {
+            dataToJSON()
+        }
+
     }
 
     private fun onAddButtonClicked() {
@@ -262,5 +275,50 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
         //mMap.addMarker(MarkerOptions().position(LatLng(currentLocation.latitude,currentLocation.longitude)))
         mMap.moveCamera(CameraUpdateFactory.newLatLng(LatLng(currentLocation.latitude,currentLocation.longitude)))
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(currentLocation.latitude,currentLocation.longitude), 2f))
+    }
+
+    private fun dataToJSON(){
+        var jsonObject: JSONObject
+        var jsonArray = JSONArray()
+
+        for(i in locationsHigh){
+            jsonObject = JSONObject()
+            jsonObject.put("Latitude", i.latitude)
+            jsonObject.put("Longitude", i.longitude)
+            jsonArray.put(jsonObject)
+        }
+        saveFile(jsonArray, "High.json")
+
+        jsonArray = JSONArray()
+        for(i in locationsBalanced){
+            jsonObject = JSONObject()
+            jsonObject.put("Latitude", i.latitude)
+            jsonObject.put("Longitude", i.longitude)
+            jsonArray.put(jsonObject)
+        }
+        saveFile(jsonArray, "Balanced.json")
+
+        jsonArray = JSONArray()
+        for(i in locationsLow){
+            jsonObject = JSONObject()
+            jsonObject.put("Latitude", i.latitude)
+            jsonObject.put("Longitude", i.longitude)
+            jsonArray.put(jsonObject)
+        }
+        saveFile(jsonArray, "Low.json")
+    }
+
+    private fun saveFile(jsonArray: JSONArray, output: String){
+        val myExternalFile = File(getExternalFilesDir(""), output)
+
+        try {
+            val fileOutPutStream = FileOutputStream(myExternalFile)
+            fileOutPutStream.write(jsonArray.toString().toByteArray())
+            fileOutPutStream.close()
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+
+        Toast.makeText(applicationContext, "data saved", Toast.LENGTH_SHORT).show()
     }
 }
