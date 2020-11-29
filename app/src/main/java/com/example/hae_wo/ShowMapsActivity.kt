@@ -10,16 +10,13 @@ import android.util.Log
 import android.view.View
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
-import androidx.core.content.ContentProviderCompat.requireContext
 import com.google.android.gms.location.*
-
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.CircleOptions
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import java.util.ArrayList
@@ -52,8 +49,10 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
             this,
             R.anim.to_bottom)}
     private var clicked = false
-    private var accuracy = 1
-    private var locations: ArrayList<Location> = arrayListOf()
+    private var accuracy = "HIGH"
+    private var locationsHigh: ArrayList<Location> = arrayListOf()
+    private var locationsBalanced: ArrayList<Location> = arrayListOf()
+    private var locationsLow: ArrayList<Location> = arrayListOf()
     private lateinit var currentLocation: Location
     private lateinit var lastLocation: Location
     private var firstPoint = true
@@ -76,38 +75,108 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
         setLowBTN = findViewById(R.id.fabLow)
         changeBTN = findViewById(R.id.fabRefresh)
 
+        //Buttons on Click Listeners
         addLocBTN.setOnClickListener{
             getLocationCallback()
-            locations.add(currentLocation)
             mMap.moveCamera(CameraUpdateFactory.newLatLng(LatLng(currentLocation.latitude,currentLocation.longitude)))
             mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(currentLocation.latitude,currentLocation.longitude), 19F))
-            mMap.addCircle(
-                CircleOptions().center(LatLng(currentLocation.latitude,currentLocation.longitude))
-                    .radius(0.5)
-                    .strokeColor(Color.BLUE)
-                    .fillColor(Color.BLUE)
-            )
-            if(!firstPoint){
-                mMap.addPolyline(PolylineOptions().add(LatLng(lastLocation.latitude,lastLocation.longitude)).add(LatLng(currentLocation.latitude,currentLocation.longitude)).color(Color.RED))
+
+            if(accuracy == "BALANCED") {
+                locationsBalanced.add(currentLocation)
+                mMap.addCircle(
+                    CircleOptions().center(
+                        LatLng(
+                            currentLocation.latitude,
+                            currentLocation.longitude
+                        )
+                    )
+                        .radius(1.0)
+                        .strokeColor(Color.BLUE)
+                        .fillColor(Color.BLUE)
+                )
+                if (!firstPoint) {
+                    mMap.addPolyline(
+                        PolylineOptions().add(
+                            LatLng(
+                                lastLocation.latitude,
+                                lastLocation.longitude
+                            )
+                        ).add(LatLng(currentLocation.latitude, currentLocation.longitude))
+                            .color(Color.BLUE)
+                    )
+                }
+            }else if(accuracy == "LOW"){
+                locationsLow.add(currentLocation)
+                mMap.addCircle(
+                    CircleOptions().center(
+                        LatLng(
+                            currentLocation.latitude,
+                            currentLocation.longitude
+                        )
+                    )
+                        .radius(1.0)
+                        .strokeColor(Color.GREEN)
+                        .fillColor(Color.GREEN)
+                )
+                if (!firstPoint) {
+                    mMap.addPolyline(
+                        PolylineOptions().add(
+                            LatLng(
+                                lastLocation.latitude,
+                                lastLocation.longitude
+                            )
+                        ).add(LatLng(currentLocation.latitude, currentLocation.longitude))
+                            .color(Color.GREEN)
+                    )
+                }
+            }else {
+                locationsHigh.add(currentLocation)
+                mMap.addCircle(
+                CircleOptions().center(
+                    LatLng(
+                        currentLocation.latitude,
+                        currentLocation.longitude
+                    )
+                )
+                    .radius(1.0)
+                    .strokeColor(Color.RED)
+                    .fillColor(Color.RED)
+                )
+                if (!firstPoint) {
+                    mMap.addPolyline(
+                        PolylineOptions().add(
+                            LatLng(
+                                lastLocation.latitude,
+                                lastLocation.longitude
+                             )
+                        ).add(LatLng(currentLocation.latitude, currentLocation.longitude))
+                            .color(Color.RED)
+                    )
+                }
             }
+
             firstPoint = false
             Log.e("lastLocation", lastLocation.toString())
             Log.e("currentLocation", currentLocation.toString())
             lastLocation = currentLocation
         }
+
         changeBTN.setOnClickListener{
             onAddButtonClicked()
         }
+
         setHighBTN.setOnClickListener{
-            accuracy = 1
+            accuracy = "HIGH"
             changeBTN.setImageResource(R.drawable.high)
         }
+
         setBalancedBTN.setOnClickListener{
-            accuracy = 2
+            accuracy = "BALANCED"
             changeBTN.setImageResource(R.drawable.balanced)
         }
+
         setLowBTN.setOnClickListener {
-            accuracy = 3
+            accuracy = "LOW"
             changeBTN.setImageResource(R.drawable.low)
         }
     }
@@ -151,11 +220,11 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
         var locationRequest: LocationRequest = LocationRequest().setFastestInterval(20000).setInterval(60000).setPriority(
             LocationRequest.PRIORITY_HIGH_ACCURACY)
-        if(accuracy == 2){
+        if(accuracy == "BALANCED"){
             locationRequest = LocationRequest().setFastestInterval(20000).setInterval(60000).setPriority(
                 LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY)
             Log.e("accuracy:", "PRIORITY_BALANCED_POWER_ACCURACY")
-        } else if (accuracy == 3){
+        } else if (accuracy == "LOW"){
             locationRequest = LocationRequest().setFastestInterval(20000).setInterval(60000).setPriority(
                 LocationRequest.PRIORITY_LOW_POWER)
             Log.e("accuracy:", "PRIORITY_LOW_POWER")
