@@ -18,7 +18,7 @@
                                 <PersistentState>
                                   <option name="values">
                                     <map>
-                                      <entry key="url" value="file:$PROJECT_DIR$/../Sdk/icons/material/materialicons/save/baseline_save_24.xml" />
+                                      <entry key="url" value="file:$PROJECT_DIR$/../Sdk/icons/material/materialicons/high_quality/baseline_high_quality_24.xml" />
                                     </map>
                                   </option>
                                 </PersistentState>
@@ -29,7 +29,7 @@
                         <option name="values">
                           <map>
                             <entry key="color" value="ffffff" />
-                            <entry key="outputName" value="save" />
+                            <entry key="outputName" value="high" />
                           </map>
                         </option>
                       </PersistentState>

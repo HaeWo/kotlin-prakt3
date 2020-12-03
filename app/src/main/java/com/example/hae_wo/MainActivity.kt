@@ -1,6 +1,6 @@
 package com.example.hae_wo
 
-import  android.Manifest
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager

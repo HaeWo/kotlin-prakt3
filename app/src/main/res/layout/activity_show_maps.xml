@@ -92,7 +92,7 @@
         tools:ignore="HardcodedText"/>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabLow"
+        android:id="@+id/fabGPS"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:clickable="true"
@@ -101,7 +101,7 @@
         android:layout_margin="24dp"
         app:layout_constraintBottom_toTopOf="@+id/fabBalanced"
         app:layout_constraintStart_toStartOf="parent"
-        app:srcCompat="@drawable/low"
+        app:srcCompat="@drawable/gps"
         android:contentDescription="Low Accuracy"
         tools:ignore="HardcodedText"/>
 

@@ -3,15 +3,20 @@ package com.example.hae_wo
 import android.annotation.SuppressLint
 import android.graphics.Color
 import android.location.Location
+import android.location.LocationListener
 import android.location.LocationManager
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import android.widget.Toast
-import com.google.android.gms.location.*
+import androidx.appcompat.app.AppCompatActivity
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY
+import com.google.android.gms.location.LocationRequest.PRIORITY_HIGH_ACCURACY
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
@@ -25,17 +30,29 @@ import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.util.ArrayList
+import java.util.*
+
 
 class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var mMap: GoogleMap
+    private lateinit var locationManager : LocationManager
+    private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
+    private lateinit var locationRequest: LocationRequest
     private lateinit var addLocBTN: FloatingActionButton
     private lateinit var changeBTN: FloatingActionButton
     private lateinit var setHighBTN: FloatingActionButton
     private lateinit var setBalancedBTN: FloatingActionButton
-    private lateinit var setLowBTN: FloatingActionButton
+    private lateinit var setGPSBTN: FloatingActionButton
     private lateinit var saveBTN: FloatingActionButton
+    private var clicked = false
+    private var accuracy = "HIGH"
+    private var locationsHigh: ArrayList<Location> = arrayListOf()
+    private var locationsBalanced: ArrayList<Location> = arrayListOf()
+    private var locationsLow: ArrayList<Location> = arrayListOf()
+    private var currentLocation: Location = Location("dummyprovider");
+    private var lastLocation: Location = Location("dummyprovider");
+    private var firstPoint = true
     private val rotateOpen: Animation by lazy {
         AnimationUtils.loadAnimation(
             this,
@@ -54,67 +71,53 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
     private val toBottom: Animation by lazy {
         AnimationUtils.loadAnimation(
             this,
-            R.anim.to_bottom)}
-    private var clicked = false
-    private var accuracy = "HIGH"
-    private var locationsHigh: ArrayList<Location> = arrayListOf()
-    private var locationsBalanced: ArrayList<Location> = arrayListOf()
-    private var locationsLow: ArrayList<Location> = arrayListOf()
-    private lateinit var currentLocation: Location
-    private lateinit var lastLocation: Location
-    private var firstPoint = true
+            R.anim.to_bottom
+        )}
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_show_maps)
-        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         val mapFragment = supportFragmentManager
             .findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
 
-        currentLocation = getLocationCallback()
-        lastLocation = getLocationCallback()
+
+        locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
+        locationRequest = LocationRequest().setFastestInterval(100).setInterval(1000).setPriority(PRIORITY_HIGH_ACCURACY)
+        lastLocation = getLocation()
+        currentLocation = getLocation()
 
         addLocBTN = findViewById(R.id.fabAdd)
         setHighBTN = findViewById(R.id.fabHigh)
         setBalancedBTN = findViewById(R.id.fabBalanced)
-        setLowBTN = findViewById(R.id.fabLow)
+        setGPSBTN = findViewById(R.id.fabGPS)
         changeBTN = findViewById(R.id.fabChange)
         saveBTN = findViewById(R.id.fabSave)
 
         //Buttons on Click Listeners
         addLocBTN.setOnClickListener{
-            getLocationCallback()
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(LatLng(currentLocation.latitude,currentLocation.longitude)))
-            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(currentLocation.latitude,currentLocation.longitude), 19F))
+            getLocation()
+            mMap.moveCamera(
+                CameraUpdateFactory.newLatLng(
+                    LatLng(
+                        currentLocation.latitude,
+                        currentLocation.longitude
+                    )
+                )
+            )
+            mMap.animateCamera(
+                CameraUpdateFactory.newLatLngZoom(
+                    LatLng(
+                        currentLocation.latitude,
+                        currentLocation.longitude
+                    ), 19F
+                )
+            )
 
             if(accuracy == "BALANCED") {
                 locationsBalanced.add(currentLocation)
-                mMap.addCircle(
-                    CircleOptions().center(
-                        LatLng(
-                            currentLocation.latitude,
-                            currentLocation.longitude
-                        )
-                    )
-                        .radius(1.0)
-                        .strokeColor(Color.BLUE)
-                        .fillColor(Color.BLUE)
-                )
-                if (!firstPoint) {
-                    mMap.addPolyline(
-                        PolylineOptions().add(
-                            LatLng(
-                                lastLocation.latitude,
-                                lastLocation.longitude
-                            )
-                        ).add(LatLng(currentLocation.latitude, currentLocation.longitude))
-                            .color(Color.BLUE)
-                    )
-                }
-            }else if(accuracy == "LOW"){
-                locationsLow.add(currentLocation)
                 mMap.addCircle(
                     CircleOptions().center(
                         LatLng(
@@ -137,18 +140,18 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
                             .color(Color.GREEN)
                     )
                 }
-            }else {
-                locationsHigh.add(currentLocation)
+            }else if(accuracy == "GPS"){
+                locationsLow.add(currentLocation)
                 mMap.addCircle(
-                CircleOptions().center(
-                    LatLng(
-                        currentLocation.latitude,
-                        currentLocation.longitude
+                    CircleOptions().center(
+                        LatLng(
+                            currentLocation.latitude,
+                            currentLocation.longitude
+                        )
                     )
-                )
-                    .radius(1.0)
-                    .strokeColor(Color.RED)
-                    .fillColor(Color.RED)
+                        .radius(1.0)
+                        .strokeColor(Color.BLUE)
+                        .fillColor(Color.BLUE)
                 )
                 if (!firstPoint) {
                     mMap.addPolyline(
@@ -156,7 +159,31 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
                             LatLng(
                                 lastLocation.latitude,
                                 lastLocation.longitude
-                             )
+                            )
+                        ).add(LatLng(currentLocation.latitude, currentLocation.longitude))
+                            .color(Color.BLUE)
+                    )
+                }
+            }else {
+                locationsHigh.add(currentLocation)
+                mMap.addCircle(
+                    CircleOptions().center(
+                        LatLng(
+                            currentLocation.latitude,
+                            currentLocation.longitude
+                        )
+                    )
+                        .radius(1.0)
+                        .strokeColor(Color.RED)
+                        .fillColor(Color.RED)
+                )
+                if (!firstPoint) {
+                    mMap.addPolyline(
+                        PolylineOptions().add(
+                            LatLng(
+                                lastLocation.latitude,
+                                lastLocation.longitude
+                            )
                         ).add(LatLng(currentLocation.latitude, currentLocation.longitude))
                             .color(Color.RED)
                     )
@@ -183,15 +210,14 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
             changeBTN.setImageResource(R.drawable.balanced)
         }
 
-        setLowBTN.setOnClickListener {
-            accuracy = "LOW"
-            changeBTN.setImageResource(R.drawable.low)
+        setGPSBTN.setOnClickListener {
+            accuracy = "GPS"
+            changeBTN.setImageResource(R.drawable.gps)
         }
 
         saveBTN.setOnClickListener {
             dataToJSON()
         }
-
     }
 
     private fun onAddButtonClicked() {
@@ -204,11 +230,11 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
         if(!clicked){
             setHighBTN.visibility = View.VISIBLE
             setBalancedBTN.visibility = View.VISIBLE
-            setLowBTN.visibility = View.VISIBLE
+            setGPSBTN.visibility = View.VISIBLE
         }else{
             setHighBTN.visibility = View.INVISIBLE
             setBalancedBTN.visibility = View.INVISIBLE
-            setLowBTN.visibility = View.INVISIBLE
+            setGPSBTN.visibility = View.INVISIBLE
         }
     }
 
@@ -216,65 +242,57 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
         if(!clicked){
             setHighBTN.startAnimation(fromBottom)
             setBalancedBTN.startAnimation(fromBottom)
-            setLowBTN.startAnimation(fromBottom)
+            setGPSBTN.startAnimation(fromBottom)
             changeBTN.startAnimation(rotateOpen)
         }else{
             setHighBTN.startAnimation(toBottom)
             setBalancedBTN.startAnimation(toBottom)
-            setLowBTN.startAnimation(toBottom)
+            setGPSBTN.startAnimation(toBottom)
             changeBTN.startAnimation(rotateClose)
         }
     }
 
     @SuppressLint("MissingPermission")
-    private fun getLocationCallback(): Location{
+    private fun getLocation(): Location{
 
-        var tempLocation = Location(LocationManager.NETWORK_PROVIDER)
+        if(accuracy == "HIGH")
+            locationRequest.priority = PRIORITY_HIGH_ACCURACY
 
-        var locationRequest: LocationRequest = LocationRequest().setFastestInterval(20000).setInterval(60000).setPriority(
-            LocationRequest.PRIORITY_HIGH_ACCURACY)
-        if(accuracy == "BALANCED"){
-            locationRequest = LocationRequest().setFastestInterval(20000).setInterval(60000).setPriority(
-                LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY)
-            Log.e("accuracy:", "PRIORITY_BALANCED_POWER_ACCURACY")
-        } else if (accuracy == "LOW"){
-            locationRequest = LocationRequest().setFastestInterval(20000).setInterval(60000).setPriority(
-                LocationRequest.PRIORITY_LOW_POWER)
-            Log.e("accuracy:", "PRIORITY_LOW_POWER")
+        if(accuracy == "BALANCED")
+            locationRequest.priority = PRIORITY_BALANCED_POWER_ACCURACY
+
+        if(accuracy == "HIGH" || accuracy == "BALANCED")
+            fusedLocationProviderClient.lastLocation.addOnSuccessListener(this) { location -> currentLocation = location}
+
+        if(accuracy == "GPS") {
+            val locationListener = LocationListener { location -> currentLocation = location }
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,0L,0f,locationListener)
         }
 
-        val locationCallback = object : LocationCallback() {
-            override fun onLocationResult(location_result: LocationResult) {
-                super.onLocationResult(location_result);
-                currentLocation = location_result.lastLocation
-                tempLocation = location_result.lastLocation
-            }
-        }
-
-        LocationServices.getFusedLocationProviderClient(this).requestLocationUpdates(
-            locationRequest,
-            locationCallback,
-            null
-        )
-        return tempLocation
+        return currentLocation
     }
 
-    /**
-     * Manipulates the map once available.
-     * This callback is triggered when the map is ready to be used.
-     * This is where we can add markers or lines, add listeners or move the camera. In this case,
-     * we just add a marker near Sydney, Australia.
-     * If Google Play services is not installed on the device, the user will be prompted to install
-     * it inside the SupportMapFragment. This method will only be triggered once the user has
-     * installed Google Play services and returned to the app.
-     */
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
 
         // Add a marker in Sydney and move the camera
         //mMap.addMarker(MarkerOptions().position(LatLng(currentLocation.latitude,currentLocation.longitude)))
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(LatLng(currentLocation.latitude,currentLocation.longitude)))
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(currentLocation.latitude,currentLocation.longitude), 2f))
+        mMap.moveCamera(
+            CameraUpdateFactory.newLatLng(
+                LatLng(
+                    currentLocation.latitude,
+                    currentLocation.longitude
+                )
+            )
+        )
+        mMap.animateCamera(
+            CameraUpdateFactory.newLatLngZoom(
+                LatLng(
+                    currentLocation.latitude,
+                    currentLocation.longitude
+                ), 2f
+            )
+        )
     }
 
     private fun dataToJSON(){
@@ -285,6 +303,7 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
             jsonObject = JSONObject()
             jsonObject.put("Latitude", i.latitude)
             jsonObject.put("Longitude", i.longitude)
+            jsonObject.put("Time", i.time)
             jsonArray.put(jsonObject)
         }
         saveFile(jsonArray, "High.json")
@@ -294,6 +313,7 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
             jsonObject = JSONObject()
             jsonObject.put("Latitude", i.latitude)
             jsonObject.put("Longitude", i.longitude)
+            jsonObject.put("Time", i.time)
             jsonArray.put(jsonObject)
         }
         saveFile(jsonArray, "Balanced.json")
@@ -303,6 +323,7 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
             jsonObject = JSONObject()
             jsonObject.put("Latitude", i.latitude)
             jsonObject.put("Longitude", i.longitude)
+            jsonObject.put("Time", i.time)
             jsonArray.put(jsonObject)
         }
         saveFile(jsonArray, "Low.json")
