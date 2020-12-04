@@ -30,52 +30,53 @@ import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.text.SimpleDateFormat
 import java.util.*
 
 
 class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private val hardCode = arrayOf(
-        LatLng(51.42197,6.88297),
-        LatLng(51.42249,6.88276),
-        LatLng(51.42289,6.88235),
-        LatLng(51.42342,6.88244),
-        LatLng(51.42349,6.88357),
-        LatLng(51.42361,6.8849),
-        LatLng(51.42406,6.88468),
-        LatLng(51.42481,6.88411),
-        LatLng(51.42494,6.8845),
-        LatLng(51.42523,6.88428),
-        LatLng(51.4259,6.88388),
-        LatLng(51.42638,6.8836),
-        LatLng(51.42657,6.88383),
-        LatLng(51.42682,6.88366),
-        LatLng(51.42704,6.88341),
-        LatLng(51.42759,6.88332),
-        LatLng(51.42794,6.88454),
-        LatLng(51.42837,6.88467),
-        LatLng(51.42881,6.88462),
-        LatLng(51.42893,6.88487),
-        LatLng(51.42869,6.88529),
-        LatLng(51.42953,6.88676),
-        LatLng(51.42994,6.88651),
-        LatLng(51.43043,6.88651),
-        LatLng(51.43104,6.88634),
-        LatLng(51.43174,6.88674),
-        LatLng(51.43178,6.88745),
-        LatLng(51.43183,6.88859),
-        LatLng(51.43249,6.88846),
-        LatLng(51.4332,6.88873),
-        LatLng(51.43343,6.88935),
-        LatLng(51.43327,6.89008),
-        LatLng(51.4332,6.89087),
-        LatLng(51.43369,6.89094),
-        LatLng(51.43413,6.89095),
-        LatLng(51.43498,6.89098),
-        LatLng(51.43556,6.891),
-        LatLng(51.43576,6.89123),
-        LatLng(52.43576,6.89204)
-        )
+        LatLng(51.42197, 6.88297),
+        LatLng(51.42249, 6.88276),
+        LatLng(51.42289, 6.88235),
+        LatLng(51.42342, 6.88244),
+        LatLng(51.42349, 6.88357),
+        LatLng(51.42361, 6.8849),
+        LatLng(51.42406, 6.88468),
+        LatLng(51.42481, 6.88411),
+        LatLng(51.42494, 6.8845),
+        LatLng(51.42523, 6.88428),
+        LatLng(51.4259, 6.88388),
+        LatLng(51.42638, 6.8836),
+        LatLng(51.42657, 6.88383),
+        LatLng(51.42682, 6.88366),
+        LatLng(51.42704, 6.88341),
+        LatLng(51.42759, 6.88332),
+        LatLng(51.42794, 6.88454),
+        LatLng(51.42837, 6.88467),
+        LatLng(51.42881, 6.88462),
+        LatLng(51.42893, 6.88487),
+        LatLng(51.42869, 6.88529),
+        LatLng(51.42953, 6.88676),
+        LatLng(51.42994, 6.88651),
+        LatLng(51.43043, 6.88651),
+        LatLng(51.43104, 6.88634),
+        LatLng(51.43174, 6.88674),
+        LatLng(51.43178, 6.88745),
+        LatLng(51.43183, 6.88859),
+        LatLng(51.43249, 6.88846),
+        LatLng(51.4332, 6.88873),
+        LatLng(51.43343, 6.88935),
+        LatLng(51.43327, 6.89008),
+        LatLng(51.4332, 6.89087),
+        LatLng(51.43369, 6.89094),
+        LatLng(51.43413, 6.89095),
+        LatLng(51.43498, 6.89098),
+        LatLng(51.43556, 6.891),
+        LatLng(51.43576, 6.89123),
+        LatLng(52.43576, 6.89204)
+    )
 
     private lateinit var mMap: GoogleMap
     private lateinit var locationManager : LocationManager
@@ -127,7 +128,9 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
         locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
-        locationRequest = LocationRequest().setFastestInterval(100).setInterval(1000).setPriority(PRIORITY_HIGH_ACCURACY)
+        locationRequest = LocationRequest().setFastestInterval(100).setInterval(1000).setPriority(
+            PRIORITY_HIGH_ACCURACY
+        )
         lastLocation = getLocation()
         currentLocation = getLocation()
 
@@ -308,7 +311,12 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
         if(accuracy == "GPS") {
             val locationListener = LocationListener { location -> currentLocation = location }
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,0L,0f,locationListener)
+            locationManager.requestLocationUpdates(
+                LocationManager.GPS_PROVIDER,
+                0L,
+                0f,
+                locationListener
+            )
         }
 
         return currentLocation
@@ -361,7 +369,7 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
             jsonObject.put("Time", i.time)
             jsonArray.put(jsonObject)
         }
-        saveFile(jsonArray, "High.json")
+        saveFile(jsonArray, "High")
 
         jsonArray = JSONArray()
         for(i in locationsBalanced){
@@ -371,7 +379,7 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
             jsonObject.put("Time", i.time)
             jsonArray.put(jsonObject)
         }
-        saveFile(jsonArray, "Balanced.json")
+        saveFile(jsonArray, "Balanced")
 
         jsonArray = JSONArray()
         for(i in locationsLow){
@@ -381,11 +389,12 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
             jsonObject.put("Time", i.time)
             jsonArray.put(jsonObject)
         }
-        saveFile(jsonArray, "Low.json")
+        saveFile(jsonArray, "GPS")
     }
 
-    private fun saveFile(jsonArray: JSONArray, output: String){
-        val myExternalFile = File(getExternalFilesDir(""), output)
+    private fun saveFile(jsonArray: JSONArray, typ: String){
+        val fileName: String = typ + SimpleDateFormat( "_MMdd-HHmm'.json'").format(Date())
+        val myExternalFile = File(getExternalFilesDir(""),  fileName)
 
         try {
             val fileOutPutStream = FileOutputStream(myExternalFile)
@@ -395,6 +404,6 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
             e.printStackTrace()
         }
 
-        Toast.makeText(applicationContext, "data saved", Toast.LENGTH_SHORT).show()
+        Toast.makeText(applicationContext, "Data saved", Toast.LENGTH_SHORT).show()
     }
 }
