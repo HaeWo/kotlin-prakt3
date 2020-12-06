@@ -1,2 +1,3 @@
+![](Logo.png)
 # hae-wo_Kotlin
-Kotlin implementation for Hä!Wo?
+Kotlin implementation of Hä!Wo?
