@@ -12,11 +12,9 @@ import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.*
 import com.google.android.gms.location.LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY
 import com.google.android.gms.location.LocationRequest.PRIORITY_HIGH_ACCURACY
-import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
@@ -24,6 +22,7 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.CircleOptions
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.PolylineOptions
+import com.google.android.gms.tasks.OnSuccessListener
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import org.json.JSONArray
 import org.json.JSONObject
@@ -32,7 +31,6 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
-
 
 class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
@@ -51,6 +49,7 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var locationManager : LocationManager
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
     private lateinit var locationRequest: LocationRequest
+    private lateinit var locationCallback: LocationCallback
     private lateinit var addLocBTN: FloatingActionButton
     private lateinit var changeBTN: FloatingActionButton
     private lateinit var setHighBTN: FloatingActionButton
@@ -62,8 +61,8 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
     private var locationsHigh: ArrayList<Location> = arrayListOf()
     private var locationsBalanced: ArrayList<Location> = arrayListOf()
     private var locationsLow: ArrayList<Location> = arrayListOf()
-    private var currentLocation: Location = Location("dummyprovider");
-    private var lastLocation: Location = Location("dummyprovider");
+    private var currentLocation: Location = Location("dummyprovider")
+    private var lastLocation: Location = Location("dummyprovider")
     private var firstPoint = true
     private val rotateOpen: Animation by lazy {
         AnimationUtils.loadAnimation(
@@ -87,6 +86,7 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
         )}
 
 
+    @SuppressLint("MissingPermission")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_show_maps)
@@ -97,9 +97,24 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
         locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
-        locationRequest = LocationRequest().setFastestInterval(100).setInterval(1000).setPriority(
-            PRIORITY_HIGH_ACCURACY
-        )
+        locationRequest = LocationRequest.create()
+        locationCallback = object: LocationCallback(){
+            override fun onLocationResult(location_result: LocationResult?) {
+                super.onLocationResult(location_result)
+                if (location_result != null) {
+                    currentLocation = location_result.lastLocation
+                    Log.e("locationCallback", location_result.lastLocation.toString())
+                }
+            }
+        }
+        fusedLocationProviderClient.requestLocationUpdates(locationRequest, locationCallback, null)
+        fusedLocationProviderClient.lastLocation.addOnSuccessListener(this) {
+            OnSuccessListener<Location> { location ->
+                if (location != null) {
+                    currentLocation = location
+                }
+            }
+        }
         lastLocation = getLocation()
         currentLocation = getLocation()
 
@@ -113,25 +128,11 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
         //Buttons on Click Listeners
         addLocBTN.setOnClickListener{
             getLocation()
-            mMap.moveCamera(
-                CameraUpdateFactory.newLatLng(
-                    LatLng(
-                        currentLocation.latitude,
-                        currentLocation.longitude
-                    )
-                )
-            )
-            mMap.animateCamera(
-                CameraUpdateFactory.newLatLngZoom(
-                    LatLng(
-                        currentLocation.latitude,
-                        currentLocation.longitude
-                    ), 19F
-                )
-            )
 
             if(accuracy == "BALANCED") {
-                locationsBalanced.add(currentLocation)
+                if(currentLocation.latitude != lastLocation.latitude) {
+                    locationsBalanced.add(currentLocation)
+                }
                 mMap.addCircle(
                     CircleOptions().center(
                         LatLng(
@@ -155,7 +156,9 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
                     )
                 }
             }else if(accuracy == "GPS"){
-                locationsLow.add(currentLocation)
+                if(currentLocation.latitude != lastLocation.latitude) {
+                    locationsLow.add(currentLocation)
+                }
                 mMap.addCircle(
                     CircleOptions().center(
                         LatLng(
@@ -179,7 +182,9 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
                     )
                 }
             }else {
-                locationsHigh.add(currentLocation)
+                if(currentLocation.latitude != lastLocation.latitude) {
+                    locationsHigh.add(currentLocation)
+                }
                 mMap.addCircle(
                     CircleOptions().center(
                         LatLng(
@@ -205,9 +210,26 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
             }
 
             firstPoint = false
-            Log.e("lastLocation", lastLocation.toString())
-            Log.e("currentLocation", currentLocation.toString())
+            //Log.e("lastLocation", lastLocation.toString())
+            //Log.e("currentLocation", currentLocation.toString())
             lastLocation = currentLocation
+
+            mMap.moveCamera(
+                CameraUpdateFactory.newLatLng(
+                    LatLng(
+                        currentLocation.latitude,
+                        currentLocation.longitude
+                    )
+                )
+            )
+            mMap.animateCamera(
+                CameraUpdateFactory.newLatLngZoom(
+                    LatLng(
+                        currentLocation.latitude,
+                        currentLocation.longitude
+                    ), 19F
+                )
+            )
         }
 
         changeBTN.setOnClickListener{
@@ -216,16 +238,27 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
         setHighBTN.setOnClickListener{
             accuracy = "HIGH"
+            locationRequest =
+                LocationRequest().setFastestInterval(1000).setInterval(1000).setPriority(
+                    PRIORITY_HIGH_ACCURACY
+                )
+            Log.e("accuracy", "HIGH")
             changeBTN.setImageResource(R.drawable.high)
         }
 
         setBalancedBTN.setOnClickListener{
             accuracy = "BALANCED"
+            locationRequest =
+                LocationRequest().setFastestInterval(1000).setInterval(1000).setPriority(
+                    PRIORITY_BALANCED_POWER_ACCURACY
+                )
+            Log.e("accuracy", "BALANCED")
             changeBTN.setImageResource(R.drawable.balanced)
         }
 
         setGPSBTN.setOnClickListener {
             accuracy = "GPS"
+            Log.e("accuracy", "GPS")
             changeBTN.setImageResource(R.drawable.gps)
         }
 
@@ -269,15 +302,6 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
     @SuppressLint("MissingPermission")
     private fun getLocation(): Location{
 
-        if(accuracy == "HIGH")
-            locationRequest.priority = PRIORITY_HIGH_ACCURACY
-
-        if(accuracy == "BALANCED")
-            locationRequest.priority = PRIORITY_BALANCED_POWER_ACCURACY
-
-        if(accuracy == "HIGH" || accuracy == "BALANCED")
-            fusedLocationProviderClient.lastLocation.addOnSuccessListener(this) { location -> currentLocation = location}
-
         if(accuracy == "GPS") {
             val locationListener = LocationListener { location -> currentLocation = location }
             locationManager.requestLocationUpdates(
@@ -286,6 +310,9 @@ class ShowMapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 0f,
                 locationListener
             )
+            Log.e("GPS", "has been called")
+        }else {
+            fusedLocationProviderClient.requestLocationUpdates(locationRequest, locationCallback, null)
         }
 
         return currentLocation
