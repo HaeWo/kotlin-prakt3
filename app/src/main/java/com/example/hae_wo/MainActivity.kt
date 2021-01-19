@@ -11,6 +11,7 @@ import android.hardware.SensorManager
 import android.location.Geocoder
 import android.location.Location
 import android.location.LocationManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -35,11 +36,11 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.util.*
 
-class MainActivity : AppCompatActivity(),SensorEventListener {
+class MainActivity : AppCompatActivity(), SensorEventListener {
 
     //Managers
-    private lateinit var sensorManager : SensorManager
-    private lateinit var locationManager : LocationManager
+    private lateinit var sensorManager: SensorManager
+    private lateinit var locationManager: LocationManager
 
     //JSON
     private var jsonArray = JSONArray()
@@ -65,6 +66,7 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
     private lateinit var sendToMap: Button
     private lateinit var btnHTTP: Button
     private lateinit var showMap: Button
+    private lateinit var startService1: Button
 
     private var start = false
 
@@ -76,7 +78,7 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
     private lateinit var rg: RadioGroup
 
     private var accuracy: Int = 1
-    
+
     //Checkboxes
     private lateinit var grvCB: CheckBox
     private lateinit var gyrCB: CheckBox
@@ -89,7 +91,7 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
     private var scope = MainScope()
 
     //GraphView
-    private lateinit var graph : GraphView
+    private lateinit var graph: GraphView
 
     //Lat und Lng Values
     private var lat: Double = 0.0
@@ -105,31 +107,39 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        val bundle = intent.extras
+        println("------------------------> ONCREAT")
+        println(intent.getStringExtra("INTENT_TYPE"))
+        if (bundle?.getString("INTENT_TYPE") != null) {
+            actionOnService(Actions.STOP)
+            println("YES <<-------------------------------------------------------")
+        }
+
         //initialize the variable and check for permission
         init()
         checkPermission()
         inputTime.setText("1000")
 
-        rbHigh.setOnClickListener{
+        rbHigh.setOnClickListener {
             accuracy = 1
         }
-        rbBalanced.setOnClickListener{
+        rbBalanced.setOnClickListener {
             accuracy = 2
         }
-        rbLow.setOnClickListener{
+        rbLow.setOnClickListener {
             accuracy = 3
         }
 
         //The start/stop button
-        btnStart.setOnClickListener{
-            if(!start){
+        btnStart.setOnClickListener {
+            if (!start) {
                 start = true
                 btnHTTP.isEnabled = false
                 sendToMap.isEnabled = false
                 registerListener()
                 startUpdates(inputTime.text.toString().toLong())
                 btnStart.text = "Stop and Save"
-            }else{
+            } else {
                 start = false
                 btnHTTP.isEnabled = true
                 sendToMap.isEnabled = true
@@ -141,20 +151,25 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
             }
         }
 
-        sendToMap.setOnClickListener{
+        sendToMap.setOnClickListener {
             sendToMap()
         }
 
-        btnHTTP.setOnClickListener{
+        btnHTTP.setOnClickListener {
             sendToHttp()
         }
 
-        showMap.setOnClickListener{
+        showMap.setOnClickListener {
             startActivity(Intent(this, ShowMapsActivity::class.java))
+        }
+
+        startService1.setOnClickListener {
+            println("START THE FOREGROUND SERVICE ON DEMAND")
+            actionOnService(Actions.START)
         }
     }
 
-    private fun init(){
+    private fun init() {
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
         graph = findViewById<View>(R.id.graph) as GraphView
@@ -184,15 +199,28 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         sendToMap = findViewById(R.id.sendToMap)
         btnHTTP = findViewById(R.id.sendHttp)
         showMap = findViewById(R.id.showMap)
+        startService1 = findViewById(R.id.startService)
     }
 
-    private fun checkPermission(){
+    private fun checkPermission() {
         //checks if the app has access to the needed permission, if not askes for it
         if (
-                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) !=  PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) !=  PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ) != PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) != PackageManager.PERMISSION_GRANTED
 
         ) {
             ActivityCompat.requestPermissions(
@@ -207,7 +235,7 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         }
     }
 
-    private fun registerListener(){
+    private fun registerListener() {
         sensorManager.registerListener(
             this,
             sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
@@ -235,7 +263,7 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         )
     }
 
-    private fun unregisterListener(){
+    private fun unregisterListener() {
         sensorManager.unregisterListener(this)
     }
 
@@ -290,13 +318,17 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         val geocoder = Geocoder(this)
 
         if (locCB.isChecked) {
-            var locationRequest: LocationRequest = LocationRequest().setFastestInterval(20000).setInterval(60000).setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
+            var locationRequest: LocationRequest =
+                LocationRequest().setFastestInterval(20000).setInterval(60000)
+                    .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
 
-            if(accuracy == 2){
-                locationRequest = LocationRequest().setFastestInterval(20000).setInterval(60000).setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY)
+            if (accuracy == 2) {
+                locationRequest = LocationRequest().setFastestInterval(20000).setInterval(60000)
+                    .setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY)
                 Log.e("accuracy:", "PRIORITY_BALANCED_POWER_ACCURACY")
-            } else if (accuracy == 3){
-                locationRequest = LocationRequest().setFastestInterval(20000).setInterval(60000).setPriority(LocationRequest.PRIORITY_LOW_POWER)
+            } else if (accuracy == 3) {
+                locationRequest = LocationRequest().setFastestInterval(20000).setInterval(60000)
+                    .setPriority(LocationRequest.PRIORITY_LOW_POWER)
                 Log.e("accuracy:", "PRIORITY_LOW_POWER")
             }
 
@@ -318,7 +350,10 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
                     Log.e("location before:", location.toString())
 
                     distances.add(location_result.lastLocation.distanceTo(location).toDouble())
-                    Log.e("distances:", location_result.lastLocation.distanceTo(location).toString())
+                    Log.e(
+                        "distances:",
+                        location_result.lastLocation.distanceTo(location).toString()
+                    )
                     location = location_result.lastLocation
 
                     lat = location_result.lastLocation.latitude
@@ -348,10 +383,10 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         }
     }
 
-    private fun sendToMap(){
+    private fun sendToMap() {
         val intent = Intent(this, SendToMapsActivity::class.java)
         intent.putExtra("LENGTH", latlngDoubleArray.size)
-        for((x, i) in latlngDoubleArray.withIndex()){
+        for ((x, i) in latlngDoubleArray.withIndex()) {
             intent.putExtra("L${x}", i)
         }
         Log.e("Debug:", latlngDoubleArray.toString())
@@ -368,7 +403,7 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         jsonObjectLit = JSONObject()
         jsonObjectPre = JSONObject()
 
-        if(grvCB.isChecked) {
+        if (grvCB.isChecked) {
             when (event?.sensor?.type) {
                 Sensor.TYPE_GRAVITY -> {
                     grv.text = "X: ${"%.2f".format(event.values[0])} m/s² \n" +
@@ -383,7 +418,7 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
             }
         }
 
-        if(accCB.isChecked) {
+        if (accCB.isChecked) {
             when (event?.sensor?.type) {
                 Sensor.TYPE_ACCELEROMETER -> {
                     acc.text = "X: ${"%.2f".format(event.values[0])} m/s² \n" +
@@ -398,7 +433,7 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
             }
         }
 
-        if(gyrCB.isChecked) {
+        if (gyrCB.isChecked) {
             when (event?.sensor?.type) {
                 Sensor.TYPE_GYROSCOPE -> {
                     gyr.text = "X: ${"%.2f".format(event.values[0])} m/s² \n" +
@@ -413,7 +448,7 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
             }
         }
 
-        if(preCB.isChecked) {
+        if (preCB.isChecked) {
             when (event?.sensor?.type) {
                 Sensor.TYPE_PRESSURE -> {
                     pre.text = "${"%.2f".format(event.values[0])} hPa"
@@ -424,7 +459,7 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
             }
         }
 
-        if(litCB.isChecked) {
+        if (litCB.isChecked) {
             when (event?.sensor?.type) {
                 Sensor.TYPE_LIGHT -> {
                     lit.text = "${"%.2f".format(event.values[0])} lx"
@@ -439,32 +474,32 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
     private fun updateSensorsData() {
-        if(!jsonObjectGrv.isNull("X")&&!jsonObjectGrv.isNull("Y")&&!jsonObjectGrv.isNull("Z")){
+        if (!jsonObjectGrv.isNull("X") && !jsonObjectGrv.isNull("Y") && !jsonObjectGrv.isNull("Z")) {
             jsonToArray(jsonObjectGrv)
         }
 
-        if(!jsonObjectAcc.isNull("X")&&!jsonObjectAcc.isNull("Y")&&!jsonObjectAcc.isNull("Z")){
+        if (!jsonObjectAcc.isNull("X") && !jsonObjectAcc.isNull("Y") && !jsonObjectAcc.isNull("Z")) {
             jsonToArray(jsonObjectAcc)
         }
 
-        if(!jsonObjectGyro.isNull("X")&&!jsonObjectGyro.isNull("Y")&&!jsonObjectGyro.isNull("Z")){
+        if (!jsonObjectGyro.isNull("X") && !jsonObjectGyro.isNull("Y") && !jsonObjectGyro.isNull("Z")) {
             jsonToArray(jsonObjectGyro)
         }
 
-        if(!jsonObjectPre.isNull("Value")){
+        if (!jsonObjectPre.isNull("Value")) {
             jsonToArray(jsonObjectPre)
         }
 
-        if(!jsonObjectLit.isNull("Value")){
+        if (!jsonObjectLit.isNull("Value")) {
             jsonToArray(jsonObjectLit)
         }
 
         //Log.e("Debug:", "Sensors data got updated!")
     }
 
-    private fun startUpdates(time: Long){
+    private fun startUpdates(time: Long) {
         scope.launch {
-            while(true){
+            while (true) {
                 //getLocationListener()
                 getLocationCallback()
                 updateSensorsData()
@@ -474,43 +509,43 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         }
     }
 
-    private fun stopUpdates(){
+    private fun stopUpdates() {
         scope.cancel()
         scope = MainScope()
     }
 
-    private fun jsonToArray(jsonObject: JSONObject){
+    private fun jsonToArray(jsonObject: JSONObject) {
         jsonArray.put(jsonObject)
     }
 
-   /* private fun calculateDistance(): FloatArray{
-        distances = FloatArray(latlngDoubleArray.size/2)
-        Log.e("doubleArray", latlngDoubleArray.toString())
-        for(i in 0..latlngDoubleArray.size-4 step 2){
-            Location.distanceBetween(
-                latlngDoubleArray[i],
-                latlngDoubleArray[i + 1],
-                latlngDoubleArray[i + 2],
-                latlngDoubleArray[i + 3],
-                distances
-            )
-            Log.e("i", latlngDoubleArray[i].toString())
-            Log.e("i + 1", latlngDoubleArray[i + 1].toString())
-            Log.e("i + 2", latlngDoubleArray[i + 2].toString())
-            Log.e("i + 3", latlngDoubleArray[i + 3].toString())
+    /* private fun calculateDistance(): FloatArray{
+         distances = FloatArray(latlngDoubleArray.size/2)
+         Log.e("doubleArray", latlngDoubleArray.toString())
+         for(i in 0..latlngDoubleArray.size-4 step 2){
+             Location.distanceBetween(
+                 latlngDoubleArray[i],
+                 latlngDoubleArray[i + 1],
+                 latlngDoubleArray[i + 2],
+                 latlngDoubleArray[i + 3],
+                 distances
+             )
+             Log.e("i", latlngDoubleArray[i].toString())
+             Log.e("i + 1", latlngDoubleArray[i + 1].toString())
+             Log.e("i + 2", latlngDoubleArray[i + 2].toString())
+             Log.e("i + 3", latlngDoubleArray[i + 3].toString())
 
-        }
-        Log.e("distances", distances.contentToString())
-        return distances
-    }*/
+         }
+         Log.e("distances", distances.contentToString())
+         return distances
+     }*/
 
-    private fun drawOnGraph(){
+    private fun drawOnGraph() {
         val dataPoints = arrayOfNulls<DataPoint>(distances.size)
 
         Log.e("distances.size", distances.size.toString())
         Log.e("accuracies.size", accuracies.size.toString())
 
-        for(i in 0 until distances.size){
+        for (i in 0 until distances.size) {
             //dataPoints[i] = DataPoint(distances[i], distances[i])
             Log.e("distances", distances[i].toString())
         }
@@ -519,7 +554,7 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         //graph.addSeries(highAccuracy)
     }
 
-    private fun saveFile(){
+    private fun saveFile() {
 
         val myExternalFile = File(getExternalFilesDir(""), "Output.json")
 
@@ -534,10 +569,12 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         Toast.makeText(applicationContext, "data saved", Toast.LENGTH_SHORT).show()
     }
 
-    private fun sendToHttp(){
+    private fun sendToHttp() {
         val client = OkHttpClient()
         val postBody = jsonArray.toString()
-        val request = Request.Builder().url("https://haewo.free.beeceptor.com").post(postBody.toRequestBody()).build()
+        val request =
+            Request.Builder().url("https://haewo.free.beeceptor.com").post(postBody.toRequestBody())
+                .build()
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 e.printStackTrace()
@@ -550,10 +587,23 @@ class MainActivity : AppCompatActivity(),SensorEventListener {
         })
     }
 
-    private suspend fun setTextOnMainThread(input: String){
-        withContext(Dispatchers.Main){
+    private suspend fun setTextOnMainThread(input: String) {
+        withContext(Dispatchers.Main) {
             loc.text = input
         }
     }
 
+    private fun actionOnService(action: Actions) {
+        if (getServiceState(this) == ServiceState.STOPPED && action == Actions.STOP) return
+        Intent(this, Service1::class.java).also {
+            it.action = action.name
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                println("Starting the service in >=26 Mode")
+                startForegroundService(it)
+                return
+            }
+            println("Starting the service in < 26 Mode")
+            startService(it)
+        }
+    }
 }

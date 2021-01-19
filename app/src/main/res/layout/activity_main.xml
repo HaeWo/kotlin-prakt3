@@ -261,5 +261,20 @@
             app:layout_constraintTop_toBottomOf="@+id/text"
             tools:layout_editor_absoluteX="0dp" />
 
+        <Button
+            android:id="@+id/startService"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="154dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="4dp"
+            android:layout_marginBottom="12dp"
+            android:text="Button"
+            app:layout_constraintBottom_toTopOf="@+id/acc_checkBox"
+            app:layout_constraintEnd_toStartOf="@+id/grv_checkBox"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/grv_checkBox" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>
