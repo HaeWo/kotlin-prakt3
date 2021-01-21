@@ -60,6 +60,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     //EditText
     private lateinit var inputTime: EditText
+    private lateinit var serviceData0: EditText
+    private lateinit var serviceData1: EditText
 
     //Buttons
     private lateinit var btnStart: Button
@@ -93,6 +95,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     //GraphView
     private lateinit var graph: GraphView
 
+    private lateinit var spinner: Spinner
+
     //Lat und Lng Values
     private var lat: Double = 0.0
     private var lng: Double = 0.0
@@ -108,11 +112,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         setContentView(R.layout.activity_main)
 
         val bundle = intent.extras
-        println("------------------------> ONCREAT")
-        println(intent.getStringExtra("INTENT_TYPE"))
         if (bundle?.getString("INTENT_TYPE") != null) {
             actionOnService(Actions.STOP)
-            println("YES <<-------------------------------------------------------")
         }
 
         //initialize the variable and check for permission
@@ -167,6 +168,21 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             println("START THE FOREGROUND SERVICE ON DEMAND")
             actionOnService(Actions.START)
         }
+
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item,
+            arrayOf(ServiceType.PERIODIC.name, ServiceType.DISTANCE.name, ServiceType.SPEED.name, ServiceType.SLEEP_AWARE.name))
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinner.adapter = adapter
+        spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
+                val selectedItem = parent.getItemAtPosition(position).toString()
+                println(selectedItem)
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>) {
+
+            }
+        }
     }
 
     private fun init() {
@@ -199,7 +215,11 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         sendToMap = findViewById(R.id.sendToMap)
         btnHTTP = findViewById(R.id.sendHttp)
         showMap = findViewById(R.id.showMap)
+
         startService1 = findViewById(R.id.startService)
+        serviceData0 = findViewById(R.id.serviceData0)
+        serviceData1 = findViewById(R.id.serviceData1)
+        spinner = findViewById(R.id.spinner)
     }
 
     private fun checkPermission() {
@@ -220,15 +240,19 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) != PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
-
         ) {
             ActivityCompat.requestPermissions(
                 this,
                 arrayOf(
                     Manifest.permission.ACCESS_FINE_LOCATION,
                     Manifest.permission.ACCESS_COARSE_LOCATION,
-                    Manifest.permission.READ_EXTERNAL_STORAGE
+                    Manifest.permission.READ_EXTERNAL_STORAGE,
+                    Manifest.permission.ACCESS_BACKGROUND_LOCATION
                 ),
                 1340,
             )
@@ -597,6 +621,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         if (getServiceState(this) == ServiceState.STOPPED && action == Actions.STOP) return
         Intent(this, Service1::class.java).also {
             it.action = action.name
+            it.putExtra("TYPE", spinner.selectedItem.toString());
+            it.putExtra("DATA0", serviceData0.text.toString().toInt());
+            it.putExtra("DATA1", serviceData1.text.toString().toInt());
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 println("Starting the service in >=26 Mode")
                 startForegroundService(it)

@@ -1,22 +1,37 @@
 package com.example.hae_wo
 
+import android.annotation.SuppressLint
 import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.location.Location
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import android.util.Log
 import android.widget.Toast
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import okhttp3.*
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+import java.io.IOException
+
 
 class Service1 : Service() {
-    private var ACTION_STOP_SERVICE: String ="STOPME"
+    private var ACTION_STOP_SERVICE: String = "STOPME"
     private var wakeLock: PowerManager.WakeLock? = null
     private var isServiceStarted = false
+    private var fusedLocation: FusedLocationProviderClient? = null
+    private var type = "";
+    private var data0 = 15;
+    private var data1 = 10;
 
     override fun onBind(intent: Intent): IBinder? {
         println("Some component want to bind with the service")
@@ -34,6 +49,10 @@ class Service1 : Service() {
 
         println("onStartCommand executed with startId: $startId")
         if (intent != null) {
+            type = intent.extras?.getString("TYPE")!!
+            data0 = intent.extras?.getInt("DATA0")!!
+            data1 = intent.extras?.getInt("DATA1")!!
+
             val action = intent.action
             println("using an intent with action $action")
             when (action) {
@@ -54,6 +73,7 @@ class Service1 : Service() {
         super.onCreate()
         println("The service has been created".toUpperCase())
         startForeground(1, createNotification())
+        fusedLocation = LocationServices.getFusedLocationProviderClient(this)
     }
 
     override fun onDestroy() {
@@ -79,17 +99,71 @@ class Service1 : Service() {
         GlobalScope.launch(Dispatchers.IO) {
             while (isServiceStarted) {
                 launch(Dispatchers.IO) {
-                    pingFakeServer()
+                    when (type) {
+                        ServiceType.PERIODIC.name -> periodic()
+                        ServiceType.DISTANCE.name -> distance()
+                        ServiceType.SPEED.name -> speed()
+                        ServiceType.SLEEP_AWARE.name -> sleepAware()
+                        else -> { // Note the block
+                            stopService()
+                        }
+                    }
                 }
-                delay(1 * 60 * 1000)
+                delay(data0.toLong() * 1000)
             }
             println("End of the loop for the service")
         }
     }
 
 
-    private fun pingFakeServer() {
+    @SuppressLint("MissingPermission")
+    private fun periodic() {
+        println("periodic()")
+        val currentLocation = fusedLocation?.getCurrentLocation(LocationRequest.PRIORITY_HIGH_ACCURACY, null)
+        currentLocation?.addOnCompleteListener { l -> sendToHttp(l.result) }
+        currentLocation?.addOnFailureListener { println("FAILED!") }
+    }
 
+    private fun distance() {
+
+    }
+
+    private fun speed() {
+
+    }
+
+    private fun sleepAware() {
+
+    }
+
+    private fun sendToHttp(loc: Location?) {
+        println("Send HTTP")
+        val client = OkHttpClient()
+        val jsonData = JSONObject()
+        if (loc != null) {
+            jsonData.put("lat", loc.latitude)
+            jsonData.put("lng", loc.longitude)
+            jsonData.put("accuracy", loc.accuracy)
+            jsonData.put("bearing", loc.bearing)
+            jsonData.put("speed", loc.speed)
+            jsonData.put("provider", loc.provider)
+         }
+        val request =
+            Request.Builder().url("https://api.sensormap.ga/haewo/niklas/$type")
+                .post(jsonData.toString().toRequestBody())
+                .build()
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                e.printStackTrace()
+                println("failed http")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                println("ok http")
+                if (!response.isSuccessful) throw IOException("Fehler: $response")
+                Log.e("Res", response.body!!.string())
+            }
+        })
     }
 
     private fun stopService() {
@@ -149,7 +223,6 @@ class Service1 : Service() {
 
         return builder
             .setContentTitle("Hae!Wo?")
-            .setContentText("This is your favorite endless service working")
             .setContentIntent(pendingIntent)
             .setSmallIcon(R.mipmap.ic_new)
             .setTicker("Ticker text")
