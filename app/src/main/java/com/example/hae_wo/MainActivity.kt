@@ -165,7 +165,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         }
 
         startService1.setOnClickListener {
-            println("START THE FOREGROUND SERVICE ON DEMAND")
             actionOnService(Actions.START)
         }
 
@@ -176,7 +175,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
                 val selectedItem = parent.getItemAtPosition(position).toString()
-                println(selectedItem)
             }
 
             override fun onNothingSelected(parent: AdapterView<*>) {

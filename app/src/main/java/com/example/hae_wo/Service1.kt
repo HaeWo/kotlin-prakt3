@@ -10,7 +10,6 @@ import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
-import android.widget.Toast
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
@@ -32,33 +31,29 @@ class Service1 : Service() {
     private var type = "";
     private var data0 = 15;
     private var data1 = 10;
+    private var lastLocation: Location? = null
 
     override fun onBind(intent: Intent): IBinder? {
-        println("Some component want to bind with the service")
         // We don't provide binding, so return null
         return null
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (ACTION_STOP_SERVICE == intent?.action) {
-            println("called to cancel service");
             stopService()
             stopSelf()
             return START_NOT_STICKY
         }
 
-        println("onStartCommand executed with startId: $startId")
         if (intent != null) {
             type = intent.extras?.getString("TYPE")!!
             data0 = intent.extras?.getInt("DATA0")!!
             data1 = intent.extras?.getInt("DATA1")!!
 
             val action = intent.action
-            println("using an intent with action $action")
             when (action) {
                 Actions.START.name -> startService()
                 Actions.STOP.name -> stopService()
-                else -> println("This should never happen. No action in the received intent")
             }
         } else {
             println(
@@ -71,19 +66,12 @@ class Service1 : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        println("The service has been created".toUpperCase())
         startForeground(1, createNotification())
         fusedLocation = LocationServices.getFusedLocationProviderClient(this)
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        Toast.makeText(this, "Service destroyed", Toast.LENGTH_SHORT).show()
-    }
-
     private fun startService() {
         if (isServiceStarted) return
-        println("Starting the foreground service task")
         isServiceStarted = true
         setServiceState(this, ServiceState.STARTED)
 
@@ -95,23 +83,20 @@ class Service1 : Service() {
                 }
             }
 
-        // we're starting a loop in a coroutine
         GlobalScope.launch(Dispatchers.IO) {
             while (isServiceStarted) {
                 launch(Dispatchers.IO) {
+                    println("loop")
                     when (type) {
                         ServiceType.PERIODIC.name -> periodic()
                         ServiceType.DISTANCE.name -> distance()
                         ServiceType.SPEED.name -> speed()
                         ServiceType.SLEEP_AWARE.name -> sleepAware()
-                        else -> { // Note the block
-                            stopService()
-                        }
+                        else -> stopService()
                     }
                 }
                 delay(data0.toLong() * 1000)
             }
-            println("End of the loop for the service")
         }
     }
 
@@ -119,19 +104,36 @@ class Service1 : Service() {
     @SuppressLint("MissingPermission")
     private fun periodic() {
         println("periodic()")
-        val currentLocation = fusedLocation?.getCurrentLocation(LocationRequest.PRIORITY_HIGH_ACCURACY, null)
+        val currentLocation =
+            fusedLocation?.getCurrentLocation(LocationRequest.PRIORITY_HIGH_ACCURACY, null)
         currentLocation?.addOnCompleteListener { l -> sendToHttp(l.result) }
         currentLocation?.addOnFailureListener { println("FAILED!") }
     }
 
+    @SuppressLint("MissingPermission")
     private fun distance() {
-
+        println("distance()")
+        val currentLocation =
+            fusedLocation?.getCurrentLocation(LocationRequest.PRIORITY_HIGH_ACCURACY, null)
+        currentLocation?.addOnCompleteListener { l ->
+            if(lastLocation != null) println("distance to last messurement is " + l.result.distanceTo(lastLocation))
+            if (lastLocation == null) {
+                lastLocation = l.result
+                sendToHttp(l.result)
+            } else if (l.result.distanceTo(lastLocation) >= data1) {
+                lastLocation = l.result
+                sendToHttp(l.result)
+            }
+        }
+        currentLocation?.addOnFailureListener { println("FAILED!") }
     }
 
+    @SuppressLint("MissingPermission")
     private fun speed() {
 
     }
 
+    @SuppressLint("MissingPermission")
     private fun sleepAware() {
 
     }
@@ -147,7 +149,7 @@ class Service1 : Service() {
             jsonData.put("bearing", loc.bearing)
             jsonData.put("speed", loc.speed)
             jsonData.put("provider", loc.provider)
-         }
+        }
         val request =
             Request.Builder().url("https://api.sensormap.ga/haewo/niklas/$type")
                 .post(jsonData.toString().toRequestBody())
@@ -167,7 +169,6 @@ class Service1 : Service() {
     }
 
     private fun stopService() {
-        println("Stopping the foreground service")
         try {
             wakeLock?.let {
                 if (it.isHeld) {
