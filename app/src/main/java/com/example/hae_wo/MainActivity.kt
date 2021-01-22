@@ -169,7 +169,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         }
 
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item,
-            arrayOf(ServiceType.PERIODIC.name, ServiceType.DISTANCE.name, ServiceType.SPEED.name, ServiceType.SLEEP_AWARE.name))
+            arrayOf(ServiceType.PERIODIC.name, ServiceType.DISTANCE.name, ServiceType.SPEED.name, ServiceType.SLEEP_AWARE.name, ServiceType.SLEEP_AWARE_MOTION.name))
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinner.adapter = adapter
         spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {

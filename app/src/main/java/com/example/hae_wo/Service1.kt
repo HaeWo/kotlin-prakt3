@@ -5,11 +5,11 @@ import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.hardware.*
 import android.location.Location
-import android.os.Build
-import android.os.IBinder
-import android.os.PowerManager
+import android.os.*
 import android.util.Log
+import android.widget.Toast
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
@@ -21,17 +21,29 @@ import okhttp3.*
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
+import kotlin.math.sqrt
 
 
 class Service1 : Service() {
-    private var ACTION_STOP_SERVICE: String = "STOPME"
-    private var wakeLock: PowerManager.WakeLock? = null
+
+    // General needed objects
     private var isServiceStarted = false
+    private var wakeLock: PowerManager.WakeLock? = null
     private var fusedLocation: FusedLocationProviderClient? = null
+
+    // Itent Stop Key
+    private var ACTION_STOP_SERVICE: String = "STOPME"
+
+    // Intent Data
     private var type = "";
     private var data0 = 15;
     private var data1 = 10;
+
+    // Distance Aware
     private var lastLocation: Location? = null
+
+    // Sleep Aware
+    private var lastMovement = 0L
 
     override fun onBind(intent: Intent): IBinder? {
         // We don't provide binding, so return null
@@ -56,7 +68,8 @@ class Service1 : Service() {
                 Actions.STOP.name -> stopService()
             }
         } else {
-            println(
+            Log.d(
+                "onStartCommand",
                 "with a null intent. It has been probably restarted by the system."
             )
         }
@@ -79,44 +92,109 @@ class Service1 : Service() {
         wakeLock =
             (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
                 newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Service1::lock").apply {
-                    acquire()
+                    acquire(10*60*1000L /*10 minutes*/)
                 }
             }
 
-        GlobalScope.launch(Dispatchers.IO) {
-            while (isServiceStarted) {
-                launch(Dispatchers.IO) {
-                    println("loop")
-                    when (type) {
-                        ServiceType.PERIODIC.name -> periodic()
-                        ServiceType.DISTANCE.name -> distance()
-                        ServiceType.SPEED.name -> speed()
-                        ServiceType.SLEEP_AWARE.name -> sleepAware()
-                        else -> stopService()
+        if (type == ServiceType.SLEEP_AWARE.name || type == ServiceType.SLEEP_AWARE_MOTION.name) {
+            val sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+            if (type == ServiceType.SLEEP_AWARE.name) {
+                val aSensor: Sensor? =
+                    sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
+                if (aSensor == null) {
+                    Toast.makeText(this, "LINEAR_ACCELERATION not supported", Toast.LENGTH_SHORT)
+                        .show()
+                } else {
+                    val eHandler = object : SensorEventListener {
+                        override fun onSensorChanged(event: SensorEvent?) {
+                            // https://stackoverflow.com/a/14574992/5605489
+                            val x = event?.values!![0]
+                            val y = event.values[1]
+                            val z = event.values[2]
+
+                            val mAccelCurrent: Float = sqrt(x * x + y * y + z * z)
+                            if (mAccelCurrent > 6) {
+                                lastMovement = System.currentTimeMillis()
+                                Log.d("onSensorChanged", mAccelCurrent.toString())
+                            }
+                        }
+
+                        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+                        }
+
+                    }
+                    sensorManager.registerListener(
+                        eHandler,
+                        aSensor,
+                        SensorManager.SENSOR_DELAY_UI
+                    )
+                }
+            } else if (type == ServiceType.SLEEP_AWARE_MOTION.name) {
+                // https://developer.android.com/guide/topics/sensors/sensors_motion#sensors-motion-significant
+                /*
+                The significant motion sensor triggers an event each time significant motion is detected
+                and then it disables itself. A significant motion is a motion that might lead to a change
+                in the user's location; for example walking, biking, or sitting in a moving car.
+                 */
+                val mSensor: Sensor? =
+                    sensorManager.getDefaultSensor(Sensor.TYPE_SIGNIFICANT_MOTION)
+
+                if (mSensor == null) {
+                    Toast.makeText(this, "SIGNIFICANT_MOTION not supported", Toast.LENGTH_SHORT)
+                        .show()
+                } else {
+                    val triggerEventListener = object : TriggerEventListener() {
+                        override fun onTrigger(event: TriggerEvent?) {
+                            lastMovement = System.currentTimeMillis()
+                            sensorManager.requestTriggerSensor(this, mSensor)
+                        }
+                    }
+                    mSensor.also { sensor ->
+                        sensorManager.requestTriggerSensor(triggerEventListener, sensor)
                     }
                 }
-                delay(data0.toLong() * 1000)
+            }
+        }
+
+        GlobalScope.launch(Dispatchers.IO) {
+            while (isServiceStarted) {
+                val x = when (type) {
+                    ServiceType.PERIODIC.name -> periodic()
+                    ServiceType.DISTANCE.name -> distance()
+                    ServiceType.SPEED.name -> speed()
+                    ServiceType.SLEEP_AWARE.name -> sleepAware()
+                    ServiceType.SLEEP_AWARE_MOTION.name -> sleepAware()
+                    else -> stopService()
+                }
+                if (x) delay(data0.toLong() * 1000)
+                else delay(1 * 1000)
             }
         }
     }
 
 
     @SuppressLint("MissingPermission")
-    private fun periodic() {
-        println("periodic()")
+    private fun periodic(): Boolean {
+        Log.d("periodic()", "call")
         val currentLocation =
             fusedLocation?.getCurrentLocation(LocationRequest.PRIORITY_HIGH_ACCURACY, null)
         currentLocation?.addOnCompleteListener { l -> sendToHttp(l.result) }
-        currentLocation?.addOnFailureListener { println("FAILED!") }
+        currentLocation?.addOnFailureListener { Log.d("periodic()", "failed to fetch location") }
+        return true
     }
 
     @SuppressLint("MissingPermission")
-    private fun distance() {
-        println("distance()")
+    private fun distance(): Boolean {
+        Log.d("distance()", "call")
         val currentLocation =
             fusedLocation?.getCurrentLocation(LocationRequest.PRIORITY_HIGH_ACCURACY, null)
         currentLocation?.addOnCompleteListener { l ->
-            if(lastLocation != null) println("distance to last messurement is " + l.result.distanceTo(lastLocation))
+            if (lastLocation != null) Log.d(
+                "distance()",
+                "distance to last messurement is " + l.result.distanceTo(
+                    lastLocation
+                )
+            )
             if (lastLocation == null) {
                 lastLocation = l.result
                 sendToHttp(l.result)
@@ -125,21 +203,42 @@ class Service1 : Service() {
                 sendToHttp(l.result)
             }
         }
-        currentLocation?.addOnFailureListener { println("FAILED!") }
+        currentLocation?.addOnFailureListener { Log.d("distance()", "failed to fetch location") }
+        return true
     }
 
     @SuppressLint("MissingPermission")
-    private fun speed() {
-
+    private fun speed(): Boolean {
+        Log.d("sleepAwareMotionSensor()", "call")
+        return true
     }
 
     @SuppressLint("MissingPermission")
-    private fun sleepAware() {
-
+    private fun sleepAware(): Boolean {
+        Log.d("sleepAware()", "call")
+        if (System.currentTimeMillis() - lastMovement > 20000) return false
+        val currentLocation =
+            fusedLocation?.getCurrentLocation(LocationRequest.PRIORITY_HIGH_ACCURACY, null)
+        currentLocation?.addOnCompleteListener { l ->
+            if (lastLocation != null) Log.d(
+                "sleepAware()",
+                "distance to last messurement is " + l.result.distanceTo(
+                    lastLocation
+                )
+            )
+            if (lastLocation == null) {
+                lastLocation = l.result
+                sendToHttp(l.result)
+            } else if (l.result.distanceTo(lastLocation) >= data1) {
+                lastLocation = l.result
+                sendToHttp(l.result)
+            }
+        }
+        currentLocation?.addOnFailureListener { Log.d("sleepAware()", "failed to fetch location") }
+        return true
     }
 
     private fun sendToHttp(loc: Location?) {
-        println("Send HTTP")
         val client = OkHttpClient()
         val jsonData = JSONObject()
         if (loc != null) {
@@ -157,18 +256,16 @@ class Service1 : Service() {
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 e.printStackTrace()
-                println("failed http")
             }
 
             override fun onResponse(call: Call, response: Response) {
-                println("ok http")
-                if (!response.isSuccessful) throw IOException("Fehler: $response")
-                Log.e("Res", response.body!!.string())
+                Log.d("sendToHttp()", "Status: " + response.code)
+                if (!response.isSuccessful) throw IOException("http error $response")
             }
         })
     }
 
-    private fun stopService() {
+    private fun stopService(): Boolean {
         try {
             wakeLock?.let {
                 if (it.isHeld) {
@@ -178,10 +275,11 @@ class Service1 : Service() {
             stopForeground(true)
             stopSelf()
         } catch (e: Exception) {
-            println("Service stopped without being started: ${e.message}")
+            Log.d("stopService()", "Service stopped without being started: ${e.message}")
         }
         isServiceStarted = false
         setServiceState(this, ServiceState.STOPPED)
+        return true
     }
 
     private fun createNotification(): Notification {
@@ -189,23 +287,21 @@ class Service1 : Service() {
 
         // depending on the Android API that we're dealing with we will have
         // to use a specific method to create the notification
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val notificationManager =
-                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager;
-            val channel = NotificationChannel(
-                notificationChannelId,
-                "Hae!Wo? Service",
-                NotificationManager.IMPORTANCE_HIGH
-            ).let {
-                it.description = "Hae!Wo? Service Channel"
-                it.enableLights(true)
-                it.lightColor = Color.RED
-                it.enableVibration(true)
-                it.vibrationPattern = longArrayOf(100, 200, 300, 400, 500, 400, 300, 200, 400)
-                it
-            }
-            notificationManager.createNotificationChannel(channel)
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager;
+        val channel = NotificationChannel(
+            notificationChannelId,
+            "Hae!Wo? Service",
+            NotificationManager.IMPORTANCE_HIGH
+        ).let {
+            it.description = "Hae!Wo? Service Channel"
+            it.enableLights(true)
+            it.lightColor = Color.RED
+            it.enableVibration(true)
+            it.vibrationPattern = longArrayOf(100, 200, 300, 400, 500, 400, 300, 200, 400)
+            it
         }
+        notificationManager.createNotificationChannel(channel)
 
         val stopSelf = Intent(this, Service1::class.java)
         stopSelf.action = ACTION_STOP_SERVICE
@@ -217,10 +313,10 @@ class Service1 : Service() {
         );
 
         val builder: Notification.Builder =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Notification.Builder(
+            Notification.Builder(
                 this,
                 notificationChannelId
-            ) else Notification.Builder(this)
+            )
 
         return builder
             .setContentTitle("Hae!Wo?")
