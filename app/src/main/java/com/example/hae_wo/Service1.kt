@@ -252,9 +252,10 @@ class Service1 : Service() {
             jsonData.put("speed", loc.speed)
             jsonData.put("provider", loc.provider)
         }
+        val mediaTypeJson = "application/json; charset=utf-8".toMediaType()
         val request =
             Request.Builder().url("https://api.sensormap.ga/haewo/niklas/$type")
-                .post(jsonData.toString().toRequestBody())
+                .post(jsonData.toString().toRequestBody(mediaTypeJson))
                 .build()
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
@@ -264,6 +265,7 @@ class Service1 : Service() {
             override fun onResponse(call: Call, response: Response) {
                 Log.d("sendToHttp()", "Status: " + response.code)
                 if (!response.isSuccessful) throw IOException("http error $response")
+                response.close()
             }
         })
     }
