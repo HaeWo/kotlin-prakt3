@@ -9,6 +9,7 @@ import android.hardware.*
 import android.location.Location
 import android.os.IBinder
 import android.os.PowerManager
+import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
@@ -33,6 +34,7 @@ class Service1 : Service() {
     private var isServiceStarted = false
     private var wakeLock: PowerManager.WakeLock? = null
     private var fusedLocation: FusedLocationProviderClient? = null
+    private var userID: String? = ""
 
     // Itent Stop Key
     private var ACTION_STOP_SERVICE: String = "STOPME"
@@ -80,10 +82,12 @@ class Service1 : Service() {
         return START_STICKY
     }
 
+    @SuppressLint("HardwareIds")
     override fun onCreate() {
         super.onCreate()
         startForeground(1, createNotification())
         fusedLocation = LocationServices.getFusedLocationProviderClient(this)
+        userID = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
     }
 
     private fun startService() {
@@ -254,7 +258,7 @@ class Service1 : Service() {
         }
         val mediaTypeJson = "application/json; charset=utf-8".toMediaType()
         val request =
-            Request.Builder().url("https://api.sensormap.ga/haewo/niklas/$type")
+            Request.Builder().url("https://api.sensormap.ga/haewo/$userID/$type")
                 .post(jsonData.toString().toRequestBody(mediaTypeJson))
                 .build()
         client.newCall(request).enqueue(object : Callback {
