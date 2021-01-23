@@ -4,12 +4,14 @@ import android.annotation.SuppressLint
 import android.app.*
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
+import android.graphics.BitmapFactory
 import android.hardware.*
 import android.location.Location
-import android.os.*
+import android.os.IBinder
+import android.os.PowerManager
 import android.util.Log
 import android.widget.Toast
+import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
@@ -18,6 +20,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
@@ -92,7 +95,7 @@ class Service1 : Service() {
         wakeLock =
             (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
                 newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Service1::lock").apply {
-                    acquire(10*60*1000L /*10 minutes*/)
+                    acquire(10 * 60 * 1000L /*10 minutes*/)
                 }
             }
 
@@ -161,12 +164,18 @@ class Service1 : Service() {
                 val x = when (type) {
                     ServiceType.PERIODIC.name -> periodic()
                     ServiceType.DISTANCE.name -> distance()
-                    ServiceType.SPEED.name -> speed()
+                    ServiceType.SPEED.name -> distance()
                     ServiceType.SLEEP_AWARE.name -> sleepAware()
                     ServiceType.SLEEP_AWARE_MOTION.name -> sleepAware()
                     else -> stopService()
                 }
-                if (x) delay(data0.toLong() * 1000)
+
+                val delayTime: Long =
+                    // data0 = Sleep Time
+                    if (type != ServiceType.DISTANCE.name) data0.toLong()
+                    // SPEED Awware: data0 = Max Speed filter: data1 = Distance filter
+                    else ((data1.toLong() / 1000) / data0.toLong()) * 3600
+                if (x) delay(delayTime * 1000)
                 else delay(1 * 1000)
             }
         }
@@ -204,12 +213,6 @@ class Service1 : Service() {
             }
         }
         currentLocation?.addOnFailureListener { Log.d("distance()", "failed to fetch location") }
-        return true
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun speed(): Boolean {
-        Log.d("sleepAwareMotionSensor()", "call")
         return true
     }
 
