@@ -11,7 +11,9 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -19,13 +21,12 @@
 
     <application
         android:allowBackup="true"
-        android:icon="@mipmap/ic_new"
-        android:requestLegacyExternalStorage="true"
+        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_new_round"
+        android:requestLegacyExternalStorage="true"
+        android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Hae_Wo"
-        android:fullBackupContent="@xml/backup_descriptor">
+        android:theme="@style/Theme.Hae_Wo">
 
         <!--
              The API key for Google Maps-based APIs is defined as a string resource.
@@ -56,8 +57,8 @@
         <service
             android:name=".Service1"
             android:enabled="true"
-            android:foregroundServiceType="location"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="location" />
     </application>
 
 </manifest>

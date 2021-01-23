@@ -289,33 +289,32 @@ class Service1 : Service() {
 
     private fun createNotification(): Notification {
         val notificationChannelId = "Hae!Wo?_SERVICE_CHANNEL"
-
-        // depending on the Android API that we're dealing with we will have
-        // to use a specific method to create the notification
         val notificationManager =
             getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager;
         val channel = NotificationChannel(
-            notificationChannelId,
-            "Hae!Wo? Service",
-            NotificationManager.IMPORTANCE_HIGH
+            notificationChannelId, "Hae!Wo? Service", NotificationManager.IMPORTANCE_LOW
         ).let {
             it.description = "Hae!Wo? Service Channel"
-            it.enableLights(true)
-            it.lightColor = Color.RED
-            it.enableVibration(true)
-            it.vibrationPattern = longArrayOf(100, 200, 300, 400, 500, 400, 300, 200, 400)
             it
         }
         notificationManager.createNotificationChannel(channel)
 
         val stopSelf = Intent(this, Service1::class.java)
         stopSelf.action = ACTION_STOP_SERVICE
-        val pendingIntent: PendingIntent = PendingIntent.getService(
+        val closeIntent: PendingIntent = PendingIntent.getService(
             this,
             0,
             stopSelf,
             PendingIntent.FLAG_CANCEL_CURRENT
         );
+
+        val closeAction: Notification.Action =
+            Notification.Action.Builder(R.drawable.save, "Beenden", closeIntent).build()
+
+        val openIntent: PendingIntent =
+            Intent(this, MainActivity::class.java).let { notificationIntent ->
+                PendingIntent.getActivity(this, 0, notificationIntent, 0)
+            }
 
         val builder: Notification.Builder =
             Notification.Builder(
@@ -325,10 +324,14 @@ class Service1 : Service() {
 
         return builder
             .setContentTitle("Hae!Wo?")
-            .setContentIntent(pendingIntent)
-            .setSmallIcon(R.mipmap.ic_new)
+            .setContentText("Service läuft im Hintergrund")
+            .setContentIntent(openIntent)
+            .setSmallIcon(R.drawable.add_location)
+            .setLargeIcon(BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher))
+            .setColor(resources.getColor(R.color.ic_new_background))
             .setTicker("Ticker text")
-            .setPriority(Notification.PRIORITY_HIGH) // for under android 26 compatibility
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .addAction(closeAction)
             .build()
     }
 }
