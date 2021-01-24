@@ -7,6 +7,8 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.hardware.*
 import android.location.Location
+import android.location.LocationManager
+import android.os.CancellationSignal
 import android.os.IBinder
 import android.os.PowerManager
 import android.provider.Settings
@@ -32,9 +34,11 @@ class Service1 : Service() {
 
     // General needed objects
     private var isServiceStarted = false
+    private var cancelService: CancellationSignal = CancellationSignal()
     private var wakeLock: PowerManager.WakeLock? = null
-    private var fusedLocation: FusedLocationProviderClient? = null
+    private var locationManager: LocationManager? = null
     private var userID: String? = ""
+    private var fixCount = 0
 
     // Itent Stop Key
     private var ACTION_STOP_SERVICE: String = "STOPME"
@@ -86,7 +90,7 @@ class Service1 : Service() {
     override fun onCreate() {
         super.onCreate()
         startForeground(1, createNotification())
-        fusedLocation = LocationServices.getFusedLocationProviderClient(this)
+        locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
         userID = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
     }
 
@@ -189,34 +193,40 @@ class Service1 : Service() {
     @SuppressLint("MissingPermission")
     private fun periodic(): Boolean {
         Log.d("periodic()", "call")
-        val currentLocation =
-            fusedLocation?.getCurrentLocation(LocationRequest.PRIORITY_HIGH_ACCURACY, null)
-        currentLocation?.addOnCompleteListener { l -> sendToHttp(l.result) }
-        currentLocation?.addOnFailureListener { Log.d("periodic()", "failed to fetch location") }
+        locationManager!!.getCurrentLocation(
+            LocationManager.GPS_PROVIDER,
+            cancelService,
+            mainExecutor,
+            { l ->
+                fixCount++
+                sendToHttp(l)
+            })
         return true
     }
 
     @SuppressLint("MissingPermission")
     private fun distance(): Boolean {
         Log.d("distance()", "call")
-        val currentLocation =
-            fusedLocation?.getCurrentLocation(LocationRequest.PRIORITY_HIGH_ACCURACY, null)
-        currentLocation?.addOnCompleteListener { l ->
-            if (lastLocation != null) Log.d(
-                "distance()",
-                "distance to last messurement is " + l.result.distanceTo(
-                    lastLocation
+        locationManager!!.getCurrentLocation(
+            LocationManager.GPS_PROVIDER,
+            cancelService,
+            mainExecutor,
+            { l ->
+                fixCount++
+                if (lastLocation != null) Log.d(
+                    "distance()",
+                    "distance to last messurement is " + l.distanceTo(
+                        lastLocation
+                    )
                 )
-            )
-            if (lastLocation == null) {
-                lastLocation = l.result
-                sendToHttp(l.result)
-            } else if (l.result.distanceTo(lastLocation) >= data1) {
-                lastLocation = l.result
-                sendToHttp(l.result)
-            }
-        }
-        currentLocation?.addOnFailureListener { Log.d("distance()", "failed to fetch location") }
+                if (lastLocation == null) {
+                    lastLocation = l
+                    sendToHttp(l)
+                } else if (l.distanceTo(lastLocation) >= data1) {
+                    lastLocation = l
+                    sendToHttp(l)
+                }
+            })
         return true
     }
 
@@ -224,24 +234,26 @@ class Service1 : Service() {
     private fun sleepAware(): Boolean {
         Log.d("sleepAware()", "call")
         if (System.currentTimeMillis() - lastMovement > 20000) return false
-        val currentLocation =
-            fusedLocation?.getCurrentLocation(LocationRequest.PRIORITY_HIGH_ACCURACY, null)
-        currentLocation?.addOnCompleteListener { l ->
-            if (lastLocation != null) Log.d(
-                "sleepAware()",
-                "distance to last messurement is " + l.result.distanceTo(
-                    lastLocation
+        locationManager!!.getCurrentLocation(
+            LocationManager.GPS_PROVIDER,
+            cancelService,
+            mainExecutor,
+            { l ->
+                fixCount++
+                if (lastLocation != null) Log.d(
+                    "sleepAware()",
+                    "distance to last messurement is " + l.distanceTo(
+                        lastLocation
+                    )
                 )
-            )
-            if (lastLocation == null) {
-                lastLocation = l.result
-                sendToHttp(l.result)
-            } else if (l.result.distanceTo(lastLocation) >= data1) {
-                lastLocation = l.result
-                sendToHttp(l.result)
-            }
-        }
-        currentLocation?.addOnFailureListener { Log.d("sleepAware()", "failed to fetch location") }
+                if (lastLocation == null) {
+                    lastLocation = l
+                    sendToHttp(l)
+                } else if (l.distanceTo(lastLocation) >= data1) {
+                    lastLocation = l
+                    sendToHttp(l)
+                }
+            })
         return true
     }
 
@@ -255,6 +267,11 @@ class Service1 : Service() {
             jsonData.put("bearing", loc.bearing)
             jsonData.put("speed", loc.speed)
             jsonData.put("provider", loc.provider)
+            if (loc.extras.get("satellites") != null) jsonData.put(
+                "satellites",
+                loc.extras.getInt("satellites")
+            )
+            jsonData.put("gpsfix", fixCount)
         }
         val mediaTypeJson = "application/json; charset=utf-8".toMediaType()
         val request =
@@ -275,6 +292,7 @@ class Service1 : Service() {
     }
 
     private fun stopService(): Boolean {
+        cancelService.cancel()
         try {
             wakeLock?.let {
                 if (it.isHeld) {
